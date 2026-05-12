@@ -4,7 +4,7 @@ export default function AboutPage() {
   return (
     <main className="mx-auto flex min-h-screen w-full max-w-xl flex-col px-6 py-20 pb-32">
       <p className="text-sm text-neutral-500">서비스 소개</p>
-      <h1 className="mt-3 text-4xl font-semibold tracking-tight text-neutral-950">문길이를 위한 작은 헌정</h1>
+      <h1 className="mt-3 text-4xl font-semibold tracking-tight text-neutral-950">Wekitlist에 대해</h1>
       <section className="mt-8">
         <h2 className="text-sm font-medium text-neutral-500">서비스 설명</h2>
         <div className="mt-4 space-y-4 text-[15px] leading-7 text-neutral-700">
