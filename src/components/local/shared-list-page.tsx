@@ -1,8 +1,8 @@
 'use client';
 
-import { ChevronDown, Link2, MapPin, Plus, Settings2, X } from 'lucide-react';
+import { ChevronDown, Link2, MapPin, Plus, RefreshCw, Settings2, X } from 'lucide-react';
 import { useSearchParams } from 'next/navigation';
-import { FormEvent, useEffect, useMemo, useRef, useState } from 'react';
+import { FormEvent, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   addSharedListItem,
   deleteSharedListItem,
@@ -166,75 +166,106 @@ export function SharedListPage({ listId }: { listId: string }) {
     titleInputRef.current?.focus();
   }, []);
 
+  const refreshAndFocus = useCallback(() => {
+    void loadSharedList(listId)
+      .then((data) => {
+        setGroupName(data.list.group_name);
+        setInviteToken(data.list.invite_token);
+        setItems(data.items);
+      })
+      .finally(() => {
+        window.requestAnimationFrame(() => titleInputRef.current?.focus());
+      });
+  }, [listId]);
+
   useEffect(() => {
     let startY = 0;
     let tracking = false;
-    let pulled = false;
-    let pointerId: number | null = null;
+    let triggered = false;
 
     function currentScrollTop(): number {
-      const docScroll = document.scrollingElement?.scrollTop ?? 0;
-      return Math.max(window.scrollY, docScroll, document.documentElement.scrollTop);
+      return Math.max(
+        window.scrollY,
+        document.scrollingElement?.scrollTop ?? 0,
+        document.documentElement.scrollTop,
+      );
     }
 
-    function handlePointerDown(event: PointerEvent) {
-      if (event.pointerType !== 'touch') return;
-      if (currentScrollTop() > 0) {
+    function isInteractiveTarget(target: EventTarget | null): boolean {
+      const el = target as HTMLElement | null;
+      return !!el?.closest('input, textarea, [contenteditable="true"], button, a');
+    }
+
+    function start(y: number, target: EventTarget | null) {
+      if (currentScrollTop() > 4) {
         tracking = false;
         return;
       }
-      const target = event.target as HTMLElement | null;
-      if (target?.closest('input, textarea, [contenteditable="true"]')) {
+      if (isInteractiveTarget(target)) {
         tracking = false;
         return;
       }
       tracking = true;
-      pulled = false;
-      pointerId = event.pointerId;
-      startY = event.clientY;
+      triggered = false;
+      startY = y;
     }
 
-    function handlePointerMove(event: PointerEvent) {
-      if (!tracking || event.pointerId !== pointerId) return;
-      if (currentScrollTop() > 0) {
+    function move(y: number) {
+      if (!tracking || triggered) return;
+      if (currentScrollTop() > 4) {
         tracking = false;
         return;
       }
-      if (event.clientY - startY > 60) {
-        pulled = true;
+      if (y - startY > 70) {
+        triggered = true;
+        tracking = false;
+        refreshAndFocus();
       }
     }
 
-    function handlePointerEnd(event: PointerEvent) {
-      if (event.pointerId !== pointerId) return;
-      const wasPulled = pulled;
+    function end() {
       tracking = false;
-      pulled = false;
-      pointerId = null;
-      if (!wasPulled) return;
-      void loadSharedList(listId)
-        .then((data) => {
-          setGroupName(data.list.group_name);
-          setInviteToken(data.list.invite_token);
-          setItems(data.items);
-        })
-        .finally(() => {
-          window.requestAnimationFrame(() => titleInputRef.current?.focus());
-        });
     }
 
-    document.addEventListener('pointerdown', handlePointerDown, { passive: true });
-    document.addEventListener('pointermove', handlePointerMove, { passive: true });
-    document.addEventListener('pointerup', handlePointerEnd, { passive: true });
-    document.addEventListener('pointercancel', handlePointerEnd, { passive: true });
+    function onTouchStart(event: TouchEvent) {
+      const t = event.touches[0];
+      if (!t) return;
+      start(t.clientY, event.target);
+    }
+    function onTouchMove(event: TouchEvent) {
+      const t = event.touches[0];
+      if (!t) return;
+      move(t.clientY);
+    }
+    function onPointerDown(event: PointerEvent) {
+      if (event.pointerType === 'mouse') return;
+      start(event.clientY, event.target);
+    }
+    function onPointerMove(event: PointerEvent) {
+      if (event.pointerType === 'mouse') return;
+      move(event.clientY);
+    }
+
+    document.addEventListener('touchstart', onTouchStart, { passive: true });
+    document.addEventListener('touchmove', onTouchMove, { passive: true });
+    document.addEventListener('touchend', end, { passive: true });
+    document.addEventListener('touchcancel', end, { passive: true });
+    document.addEventListener('pointerdown', onPointerDown, { passive: true });
+    document.addEventListener('pointermove', onPointerMove, { passive: true });
+    document.addEventListener('pointerup', end, { passive: true });
+    document.addEventListener('pointercancel', end, { passive: true });
 
     return () => {
-      document.removeEventListener('pointerdown', handlePointerDown);
-      document.removeEventListener('pointermove', handlePointerMove);
-      document.removeEventListener('pointerup', handlePointerEnd);
-      document.removeEventListener('pointercancel', handlePointerEnd);
+      document.removeEventListener('touchstart', onTouchStart);
+      document.removeEventListener('touchmove', onTouchMove);
+      document.removeEventListener('touchend', end);
+      document.removeEventListener('touchcancel', end);
+      document.removeEventListener('pointerdown', onPointerDown);
+      document.removeEventListener('pointermove', onPointerMove);
+      document.removeEventListener('pointerup', end);
+      document.removeEventListener('pointercancel', end);
     };
-  }, [listId]);
+  }, [refreshAndFocus]);
 
   useEffect(() => {
     const timer = window.setInterval(() => {
@@ -553,7 +584,15 @@ export function SharedListPage({ listId }: { listId: string }) {
       </p>
       <div className="mt-2 flex items-center justify-between">
         <h1 className="text-3xl font-semibold tracking-tight text-neutral-950">{groupName}</h1>
-        <div className="relative">
+        <div className="relative flex items-center gap-1.5">
+          <button
+            type="button"
+            aria-label="새로고침"
+            className="flex h-8 w-8 items-center justify-center rounded-full bg-neutral-100 text-neutral-600 transition hover:bg-neutral-200"
+            onClick={refreshAndFocus}
+          >
+            <RefreshCw className="h-4 w-4" strokeWidth={2} />
+          </button>
           <button
             type="button"
             className="rounded-full bg-neutral-100 px-4 py-1.5 text-sm font-medium text-neutral-700 transition hover:bg-neutral-200"
