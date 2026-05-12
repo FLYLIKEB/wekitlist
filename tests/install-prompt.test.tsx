@@ -2,13 +2,23 @@
 import '@testing-library/jest-dom/vitest';
 import { act, cleanup, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { InstallPrompt } from '../src/components/local/install-prompt';
 
 type BeforeInstallPromptEvent = Event & {
   prompt: () => Promise<void>;
   userChoice: Promise<{ outcome: 'accepted' | 'dismissed' }>;
 };
+
+const ANDROID_UA =
+  'Mozilla/5.0 (Linux; Android 14; Pixel 8) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Mobile Safari/537.36';
+
+function setUserAgent(ua: string) {
+  Object.defineProperty(window.navigator, 'userAgent', {
+    configurable: true,
+    get: () => ua,
+  });
+}
 
 function fireBeforeInstallPrompt(outcome: 'accepted' | 'dismissed' = 'accepted') {
   const event = new Event('beforeinstallprompt') as BeforeInstallPromptEvent;
@@ -18,18 +28,22 @@ function fireBeforeInstallPrompt(outcome: 'accepted' | 'dismissed' = 'accepted')
   return event;
 }
 
+beforeEach(() => {
+  setUserAgent(ANDROID_UA);
+});
+
 afterEach(() => {
   cleanup();
   window.localStorage.clear();
 });
 
-describe('InstallPrompt', () => {
+describe('InstallPrompt (Android)', () => {
   it('renders nothing until beforeinstallprompt fires', () => {
     render(<InstallPrompt />);
     expect(screen.queryByRole('button', { name: '앱으로 설치' })).not.toBeInTheDocument();
   });
 
-  it('shows the install banner after beforeinstallprompt fires', async () => {
+  it('shows the install dialog after beforeinstallprompt fires', async () => {
     render(<InstallPrompt />);
 
     act(() => {
@@ -70,7 +84,7 @@ describe('InstallPrompt', () => {
       fireBeforeInstallPrompt();
     });
 
-    const dismissButton = await screen.findByRole('button', { name: '설치 안내 닫기' });
+    const dismissButton = await screen.findByRole('button', { name: '닫기' });
     await user.click(dismissButton);
 
     await waitFor(() => {
@@ -79,7 +93,7 @@ describe('InstallPrompt', () => {
     expect(window.localStorage.getItem('installPromptDismissedAt')).not.toBeNull();
   });
 
-  it('does not render the banner if the user dismissed it recently', async () => {
+  it('does not render the dialog if the user dismissed it recently', async () => {
     window.localStorage.setItem('installPromptDismissedAt', String(Date.now()));
 
     render(<InstallPrompt />);
@@ -89,7 +103,7 @@ describe('InstallPrompt', () => {
     });
 
     // Give the appearance delay a chance to fire
-    await new Promise((resolve) => setTimeout(resolve, 50));
+    await new Promise((resolve) => setTimeout(resolve, 700));
 
     expect(screen.queryByRole('button', { name: '앱으로 설치' })).not.toBeInTheDocument();
   });
