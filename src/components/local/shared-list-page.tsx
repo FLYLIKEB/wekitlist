@@ -1,7 +1,7 @@
 'use client';
 
 import { Plus } from 'lucide-react';
-import { FormEvent, useEffect, useMemo, useState } from 'react';
+import { FormEvent, useEffect, useMemo, useRef, useState } from 'react';
 import {
   addSharedListItem,
   loadSharedList,
@@ -14,12 +14,12 @@ function formatCreatedAt(createdAt: string): string {
   const now = new Date();
   const diffMs = now.getTime() - date.getTime();
   const diffMin = Math.floor(diffMs / 60000);
-  if (diffMin < 1) return '생성됨 방금 전';
-  if (diffMin < 60) return `생성됨 ${diffMin}분 전`;
+  if (diffMin < 1) return '방금 전';
+  if (diffMin < 60) return `${diffMin}분 전`;
   const diffHour = Math.floor(diffMin / 60);
-  if (diffHour < 24) return `생성됨 ${diffHour}시간 전`;
+  if (diffHour < 24) return `${diffHour}시간 전`;
   const diffDay = Math.floor(diffHour / 24);
-  return `생성됨 ${diffDay}일 전`;
+  return `${diffDay}일 전`;
 }
 
 export function SharedListPage({ listId }: { listId: string }) {
@@ -32,6 +32,8 @@ export function SharedListPage({ listId }: { listId: string }) {
   const [inviteToken, setInviteToken] = useState('');
   const [shareOpen, setShareOpen] = useState(false);
   const [toastMessage, setToastMessage] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const titleInputRef = useRef<HTMLInputElement>(null);
 
   const pendingItems = useMemo(() => items.filter((item) => !item.completed_at), [items]);
   const completedItems = useMemo(() => items.filter((item) => item.completed_at), [items]);
@@ -73,6 +75,10 @@ export function SharedListPage({ listId }: { listId: string }) {
   }
 
   useEffect(() => {
+    titleInputRef.current?.focus();
+  }, []);
+
+  useEffect(() => {
     let cancelled = false;
 
     loadSharedList(listId).then((data) => {
@@ -92,20 +98,47 @@ export function SharedListPage({ listId }: { listId: string }) {
 
   async function handleAddItem(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (!title.trim()) return;
-    await addSharedListItem(listId, {
-      title: title.trim(),
-      linkUrl: linkUrl.trim(),
-      tags: tagsText
-        .split(',')
-        .map((tag) => tag.trim())
-        .filter(Boolean),
-    });
+
+    const nextTitle = title.trim();
+    const nextLinkUrl = linkUrl.trim();
+    const nextTags = tagsText
+      .split(',')
+      .map((tag) => tag.trim())
+      .filter(Boolean);
+
+    if (!nextTitle || isSubmitting) return;
+
+    const optimisticId = `optimistic-${crypto.randomUUID()}`;
+    const optimisticItem: SharedListItem = {
+      id: optimisticId,
+      title: nextTitle,
+      link_url: nextLinkUrl || null,
+      tags: nextTags.length ? nextTags : null,
+      created_at: new Date().toISOString(),
+      completed_at: null,
+    };
+
+    setIsSubmitting(true);
+    setItems((current) => [optimisticItem, ...current]);
     setTitle('');
     setLinkUrl('');
     setTagsText('');
     setDetailOpen(false);
-    await refresh();
+    titleInputRef.current?.focus();
+
+    try {
+      const createdItem = await addSharedListItem(listId, {
+        title: nextTitle,
+        linkUrl: nextLinkUrl,
+        tags: nextTags,
+      });
+      setItems((current) => current.map((item) => (item.id === optimisticId ? createdItem : item)));
+    } catch {
+      setItems((current) => current.filter((item) => item.id !== optimisticId));
+    } finally {
+      setIsSubmitting(false);
+      titleInputRef.current?.focus();
+    }
   }
 
   async function handleToggleComplete(itemId: string, completed: boolean) {
@@ -155,8 +188,10 @@ export function SharedListPage({ listId }: { listId: string }) {
       <form className="mt-6 border-b border-neutral-200 pb-2" onSubmit={handleAddItem}>
         <div className="flex items-end gap-3">
           <input
+            ref={titleInputRef}
+            autoFocus
             className="h-10 min-w-0 flex-1 bg-transparent text-[15px] text-neutral-950 outline-none placeholder:text-neutral-400"
-            placeholder="하고 싶은 일을 적어보세요"
+            placeholder="새 항목"
             value={title}
             onChange={(event) => setTitle(event.target.value)}
           />
@@ -171,7 +206,7 @@ export function SharedListPage({ listId }: { listId: string }) {
             aria-label="항목 추가"
             className="mb-1 flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-neutral-950 text-white transition hover:scale-[1.03] hover:bg-neutral-800 disabled:bg-neutral-300"
             type="submit"
-            disabled={!title.trim()}
+            disabled={isSubmitting || !title.trim()}
           >
             <Plus className="h-3.5 w-3.5" strokeWidth={2.6} />
           </button>
@@ -206,7 +241,10 @@ export function SharedListPage({ listId }: { listId: string }) {
                 onClick={() => void handleToggleComplete(item.id, true)}
               />
               <div className="min-w-0 flex-1">
-                <h3 className="text-[15px] font-medium leading-6 text-neutral-950">{item.title}</h3>
+                <div className="flex items-start justify-between gap-3">
+                  <h3 className="min-w-0 flex-1 text-[15px] font-medium leading-6 text-neutral-950">{item.title}</h3>
+                  <p className="shrink-0 pt-0.5 text-xs text-neutral-400">{formatCreatedAt(item.created_at)}</p>
+                </div>
                 {item.link_url ? (
                   <a
                     href={item.link_url}
@@ -229,7 +267,6 @@ export function SharedListPage({ listId }: { listId: string }) {
                     ))}
                   </div>
                 ) : null}
-                <p className="mt-0.5 text-xs text-neutral-400">{formatCreatedAt(item.created_at)}</p>
               </div>
             </article>
           ))}

@@ -29,7 +29,19 @@ describe('shared list data layer', () => {
   });
 
   it('sends linkUrl and tags when creating an item', async () => {
-    const insert = vi.fn().mockResolvedValue({ error: null });
+    const single = vi.fn().mockResolvedValue({
+      data: {
+        id: 'item-1',
+        title: '한강 산책',
+        link_url: 'https://map.kakao.com/example',
+        tags: ['데이트', '산책'],
+        created_at: '2026-05-12T00:00:00.000Z',
+        completed_at: null,
+      },
+      error: null,
+    });
+    const select = vi.fn().mockReturnValue({ single });
+    const insert = vi.fn().mockReturnValue({ select });
 
     from.mockImplementation((table: string) => {
       if (table === 'bucket_list_items') {
@@ -41,10 +53,19 @@ describe('shared list data layer', () => {
 
     const { addSharedListItem } = await import('../src/lib/shared-list');
 
-    await addSharedListItem('list-1', {
+    await expect(
+      addSharedListItem('list-1', {
+        title: '한강 산책',
+        linkUrl: 'https://map.kakao.com/example',
+        tags: ['데이트', '산책'],
+      }),
+    ).resolves.toEqual({
+      id: 'item-1',
       title: '한강 산책',
-      linkUrl: 'https://map.kakao.com/example',
+      link_url: 'https://map.kakao.com/example',
       tags: ['데이트', '산책'],
+      created_at: '2026-05-12T00:00:00.000Z',
+      completed_at: null,
     });
 
     expect(insert).toHaveBeenCalledWith({
@@ -53,7 +74,7 @@ describe('shared list data layer', () => {
       link_url: 'https://map.kakao.com/example',
       tags: ['데이트', '산책'],
     });
-
+    expect(select).toHaveBeenCalledWith('id, title, link_url, tags, created_at, completed_at');
     expect(getSession).toHaveBeenCalled();
   });
 

@@ -112,16 +112,22 @@ export async function loadSharedListByInviteToken(inviteToken: string) {
 export async function addSharedListItem(listId: string, input: NewSharedListItemInput) {
   await ensureSession();
 
-  const { error } = await supabase.from('bucket_list_items').insert({
-    shared_list_id: listId,
-    title: input.title,
-    link_url: input.linkUrl?.trim() || null,
-    tags: input.tags?.length ? input.tags : null,
-  });
+  const { data, error } = await supabase
+    .from('bucket_list_items')
+    .insert({
+      shared_list_id: listId,
+      title: input.title,
+      link_url: input.linkUrl?.trim() || null,
+      tags: input.tags?.length ? input.tags : null,
+    })
+    .select('id, title, link_url, tags, created_at, completed_at')
+    .single();
 
-  if (error) {
+  if (error || !data) {
     throw new Error('create-item-failed');
   }
+
+  return data as SharedListItem;
 }
 
 export async function toggleSharedListItem(itemId: string, completed: boolean) {
