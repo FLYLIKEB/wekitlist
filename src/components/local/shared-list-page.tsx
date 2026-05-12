@@ -74,6 +74,7 @@ export function SharedListPage({ listId }: { listId: string }) {
   const myName = searchParams.get('as')?.trim() ?? '';
   const [nowTimestamp, setNowTimestamp] = useState(() => Date.now());
   const titleInputRef = useRef<HTMLInputElement>(null);
+  const linkInputRef = useRef<HTMLInputElement>(null);
   const editingInputRef = useRef<HTMLInputElement>(null);
   const toastTimerRef = useRef<number | null>(null);
   const deleteRequestRef = useRef(new Map<string, Promise<void>>());
@@ -531,7 +532,17 @@ export function SharedListPage({ listId }: { listId: string }) {
             type="button"
             aria-label="상세설정"
             className="mb-1 flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-neutral-100 text-neutral-600 transition hover:bg-neutral-200"
-            onClick={() => setDetailOpen((open) => !open)}
+            onClick={() => {
+              setDetailOpen((open) => {
+                const next = !open;
+                if (next) {
+                  window.requestAnimationFrame(() => {
+                    linkInputRef.current?.focus();
+                  });
+                }
+                return next;
+              });
+            }}
           >
             <Settings2 className="h-3.5 w-3.5" strokeWidth={2} />
           </button>
@@ -547,6 +558,7 @@ export function SharedListPage({ listId }: { listId: string }) {
         {detailOpen ? (
           <div className="motion-fade-up mt-2 flex flex-col gap-2">
             <input
+              ref={linkInputRef}
               className="h-9 w-full rounded-lg bg-neutral-50 px-3 text-sm text-neutral-950 outline-none placeholder:text-neutral-400"
               placeholder="링크 주소 (https://...)"
               value={linkUrl}
