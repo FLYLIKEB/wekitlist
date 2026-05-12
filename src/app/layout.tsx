@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from 'next';
+import { House } from 'lucide-react';
 import Link from 'next/link';
 import { InstallPrompt } from '@/components/local/install-prompt';
 import './globals.css';
@@ -41,9 +42,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <Link
             href="/"
             aria-label="홈으로 이동"
-            className="fixed left-3 top-3 z-30 text-xs font-semibold tracking-tight text-neutral-500 transition hover:text-neutral-900"
+            className="fixed left-3 top-3 z-30 flex h-9 w-9 items-center justify-center rounded-full bg-white/90 text-neutral-500 shadow-sm ring-1 ring-neutral-200/80 transition hover:text-neutral-900"
           >
-            Wekitlist
+            <House className="h-4 w-4" strokeWidth={2} />
           </Link>
           {children}
           <footer className="px-6 pb-[calc(env(safe-area-inset-bottom)+20px)] pt-12">
