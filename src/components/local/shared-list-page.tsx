@@ -296,6 +296,22 @@ export function SharedListPage({ listId }: { listId: string }) {
     setEditingDraft({ title: '', linkUrl: '', tagsText: '' });
   }
 
+  function parseDraftTags(tagsText: string): string[] {
+    return tagsText
+      .split(',')
+      .map((tag) => tag.trim())
+      .filter(Boolean);
+  }
+
+  function toggleDraftTag(tag: string) {
+    setEditingDraft((current) => {
+      const tags = parseDraftTags(current.tagsText);
+      const isSelected = tags.includes(tag);
+      const nextTags = isSelected ? tags.filter((existing) => existing !== tag) : [...tags, tag];
+      return { ...current, tagsText: nextTags.join(', ') };
+    });
+  }
+
   function clearLongPressTimer() {
     if (longPressTimerRef.current !== null) {
       window.clearTimeout(longPressTimerRef.current);
@@ -635,6 +651,27 @@ export function SharedListPage({ listId }: { listId: string }) {
                         }
                       }}
                     />
+                    {availableTags.length > 0 ? (
+                      <div className="flex flex-wrap gap-1.5">
+                        {availableTags.map((tag) => {
+                          const selected = parseDraftTags(editingDraft.tagsText).includes(tag);
+                          return (
+                            <button
+                              key={tag}
+                              type="button"
+                              className={`rounded-full px-3 py-1 text-xs transition ${
+                                selected
+                                  ? 'bg-neutral-950 text-white'
+                                  : 'bg-neutral-100 text-neutral-600 hover:bg-neutral-200'
+                              }`}
+                              onClick={() => toggleDraftTag(tag)}
+                            >
+                              {tag}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    ) : null}
                     <div className="flex justify-end gap-2">
                       <button
                         type="button"
@@ -779,6 +816,27 @@ export function SharedListPage({ listId }: { listId: string }) {
                       }
                     }}
                   />
+                  {availableTags.length > 0 ? (
+                    <div className="flex flex-wrap gap-1.5">
+                      {availableTags.map((tag) => {
+                        const selected = parseDraftTags(editingDraft.tagsText).includes(tag);
+                        return (
+                          <button
+                            key={tag}
+                            type="button"
+                            className={`rounded-full px-3 py-1 text-xs transition ${
+                              selected
+                                ? 'bg-neutral-950 text-white'
+                                : 'bg-neutral-100 text-neutral-600 hover:bg-neutral-200'
+                            }`}
+                            onClick={() => toggleDraftTag(tag)}
+                          >
+                            {tag}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  ) : null}
                   <div className="flex justify-end gap-2">
                     <button
                       type="button"
