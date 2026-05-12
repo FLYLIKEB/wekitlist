@@ -11,9 +11,12 @@ import {
   registerMember,
   restoreSharedListItem,
   toggleSharedListItem,
+  updateSharedListItemTitle,
   type ListMember,
   type SharedListItem,
 } from '@/lib/shared-list';
+
+const LONG_PRESS_MS = 450;
 
 function formatCreatedAt(createdAt: string, nowTimestamp: number): string {
   const date = new Date(createdAt);
@@ -54,12 +57,17 @@ export function SharedListPage({ listId }: { listId: string }) {
   const [completedVisibleCount, setCompletedVisibleCount] = useState(5);
   const [members, setMembers] = useState<ListMember[]>([]);
   const [selectedTag, setSelectedTag] = useState<string | null>(null);
+  const [editingItemId, setEditingItemId] = useState<string | null>(null);
+  const [editingDraft, setEditingDraft] = useState('');
   const searchParams = useSearchParams();
   const myName = searchParams.get('as')?.trim() ?? '';
   const [nowTimestamp, setNowTimestamp] = useState(() => Date.now());
   const titleInputRef = useRef<HTMLInputElement>(null);
+  const editingInputRef = useRef<HTMLInputElement>(null);
   const toastTimerRef = useRef<number | null>(null);
   const deleteRequestRef = useRef(new Map<string, Promise<void>>());
+  const longPressTimerRef = useRef<number | null>(null);
+  const longPressTriggeredRef = useRef(false);
 
   const pendingItemsAll = useMemo(() => items.filter((item) => !item.completed_at), [items]);
   const completedItemsAll = useMemo(() => items.filter((item) => item.completed_at), [items]);
@@ -264,6 +272,81 @@ export function SharedListPage({ listId }: { listId: string }) {
     }
   }
 
+  function startEditing(item: SharedListItem) {
+    setEditingItemId(item.id);
+    setEditingDraft(item.title);
+  }
+
+  function cancelEditing() {
+    setEditingItemId(null);
+    setEditingDraft('');
+  }
+
+  function clearLongPressTimer() {
+    if (longPressTimerRef.current !== null) {
+      window.clearTimeout(longPressTimerRef.current);
+      longPressTimerRef.current = null;
+    }
+  }
+
+  function handleLongPressStart(item: SharedListItem) {
+    if (editingItemId === item.id) return;
+    longPressTriggeredRef.current = false;
+    clearLongPressTimer();
+    longPressTimerRef.current = window.setTimeout(() => {
+      longPressTriggeredRef.current = true;
+      longPressTimerRef.current = null;
+      startEditing(item);
+    }, LONG_PRESS_MS);
+  }
+
+  function handleLongPressEnd() {
+    clearLongPressTimer();
+  }
+
+  useEffect(() => {
+    return () => {
+      if (longPressTimerRef.current !== null) {
+        window.clearTimeout(longPressTimerRef.current);
+        longPressTimerRef.current = null;
+      }
+    };
+  }, []);
+
+  useEffect(() => {
+    if (editingItemId) {
+      editingInputRef.current?.focus();
+      editingInputRef.current?.select();
+    }
+  }, [editingItemId]);
+
+  async function commitEditing(item: SharedListItem) {
+    const nextTitle = editingDraft.trim();
+    if (!nextTitle || nextTitle === item.title) {
+      cancelEditing();
+      return;
+    }
+
+    const previousTitle = item.title;
+    setItems((current) =>
+      current.map((existing) =>
+        existing.id === item.id ? { ...existing, title: nextTitle } : existing,
+      ),
+    );
+    cancelEditing();
+
+    try {
+      await updateSharedListItemTitle(item.id, nextTitle);
+    } catch {
+      setItems((current) =>
+        current.map((existing) =>
+          existing.id === item.id ? { ...existing, title: previousTitle } : existing,
+        ),
+      );
+      showToast('수정에 실패했어요');
+    }
+  }
+
   async function handleUndoDelete(target: SharedListItem) {
     clearToast();
     const pendingDelete = deleteRequestRef.current.get(target.id);
@@ -448,7 +531,38 @@ export function SharedListPage({ listId }: { listId: string }) {
               <div className="min-w-0 flex-1">
                 <div className="flex items-start justify-between gap-2">
                   <div className="flex min-w-0 flex-1 flex-wrap items-center gap-x-1.5 gap-y-1">
-                    <h3 className="text-[15px] font-medium leading-6 text-neutral-950">{item.title}</h3>
+                    {editingItemId === item.id ? (
+                      <input
+                        ref={editingInputRef}
+                        className="min-w-0 flex-1 rounded-md bg-neutral-50 px-2 py-0.5 text-[15px] font-medium leading-6 text-neutral-950 outline-none ring-1 ring-neutral-300 focus:ring-neutral-500"
+                        value={editingDraft}
+                        onChange={(event) => setEditingDraft(event.target.value)}
+                        onBlur={() => void commitEditing(item)}
+                        onKeyDown={(event) => {
+                          if (event.key === 'Enter') {
+                            event.preventDefault();
+                            void commitEditing(item);
+                          } else if (event.key === 'Escape') {
+                            event.preventDefault();
+                            cancelEditing();
+                          }
+                        }}
+                      />
+                    ) : (
+                      <h3
+                        className="cursor-text select-none text-[15px] font-medium leading-6 text-neutral-950"
+                        onPointerDown={() => handleLongPressStart(item)}
+                        onPointerUp={handleLongPressEnd}
+                        onPointerLeave={handleLongPressEnd}
+                        onPointerCancel={handleLongPressEnd}
+                        onContextMenu={(event) => {
+                          event.preventDefault();
+                          startEditing(item);
+                        }}
+                      >
+                        {item.title}
+                      </h3>
+                    )}
                     {item.tags?.map((tag) => (
                       <span
                         key={tag}
@@ -506,7 +620,38 @@ export function SharedListPage({ listId }: { listId: string }) {
               >
                 <div className="h-2 w-2 rounded-full bg-neutral-400" />
               </button>
-              <h3 className="min-w-0 flex-1 text-[15px] leading-6 text-neutral-400 line-through">{item.title}</h3>
+              {editingItemId === item.id ? (
+                <input
+                  ref={editingInputRef}
+                  className="min-w-0 flex-1 rounded-md bg-neutral-50 px-2 py-0.5 text-[15px] leading-6 text-neutral-700 outline-none ring-1 ring-neutral-300 focus:ring-neutral-500"
+                  value={editingDraft}
+                  onChange={(event) => setEditingDraft(event.target.value)}
+                  onBlur={() => void commitEditing(item)}
+                  onKeyDown={(event) => {
+                    if (event.key === 'Enter') {
+                      event.preventDefault();
+                      void commitEditing(item);
+                    } else if (event.key === 'Escape') {
+                      event.preventDefault();
+                      cancelEditing();
+                    }
+                  }}
+                />
+              ) : (
+                <h3
+                  className="min-w-0 flex-1 cursor-text select-none text-[15px] leading-6 text-neutral-400 line-through"
+                  onPointerDown={() => handleLongPressStart(item)}
+                  onPointerUp={handleLongPressEnd}
+                  onPointerLeave={handleLongPressEnd}
+                  onPointerCancel={handleLongPressEnd}
+                  onContextMenu={(event) => {
+                    event.preventDefault();
+                    startEditing(item);
+                  }}
+                >
+                  {item.title}
+                </h3>
+              )}
               <button
                 type="button"
                 aria-label={`${item.title} 삭제`}

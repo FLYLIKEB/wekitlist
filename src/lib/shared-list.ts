@@ -187,3 +187,19 @@ export async function toggleSharedListItem(itemId: string, completed: boolean) {
     throw new Error(completed ? 'complete-item-failed' : 'reopen-item-failed');
   }
 }
+
+export async function updateSharedListItemTitle(itemId: string, title: string) {
+  const trimmed = title.trim();
+  if (!trimmed) {
+    throw new Error('empty-title');
+  }
+
+  const { error } = await supabase
+    .from('bucket_list_items')
+    .update({ title: trimmed })
+    .eq('id', itemId);
+
+  if (error) {
+    throw new Error('update-title-failed');
+  }
+}
