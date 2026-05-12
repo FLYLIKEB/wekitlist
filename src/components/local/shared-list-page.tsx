@@ -1,18 +1,19 @@
 'use client';
 
-import { Plus } from 'lucide-react';
+import { Link2, MapPin, Plus, Settings2, X } from 'lucide-react';
 import { FormEvent, useEffect, useMemo, useRef, useState } from 'react';
 import {
   addSharedListItem,
+  deleteSharedListItem,
   loadSharedList,
+  restoreSharedListItem,
   toggleSharedListItem,
   type SharedListItem,
 } from '@/lib/shared-list';
 
-function formatCreatedAt(createdAt: string): string {
+function formatCreatedAt(createdAt: string, nowTimestamp: number): string {
   const date = new Date(createdAt);
-  const now = new Date();
-  const diffMs = now.getTime() - date.getTime();
+  const diffMs = Math.max(0, nowTimestamp - date.getTime());
   const diffMin = Math.floor(diffMs / 60000);
   if (diffMin < 1) return '방금 전';
   if (diffMin < 60) return `${diffMin}분 전`;
@@ -20,6 +21,19 @@ function formatCreatedAt(createdAt: string): string {
   if (diffHour < 24) return `${diffHour}시간 전`;
   const diffDay = Math.floor(diffHour / 24);
   return `${diffDay}일 전`;
+}
+
+function openKakaoMap(query: string) {
+  const q = encodeURIComponent(query);
+  const ua = window.navigator.userAgent;
+  const isAndroid = /android/i.test(ua);
+
+  if (isAndroid) {
+    window.location.href = `intent://search?q=${q}#Intent;scheme=kakaomap;package=net.daum.android.map;end`;
+    return;
+  }
+
+  window.location.href = `kakaomap://search?q=${q}`;
 }
 
 export function SharedListPage({ listId }: { listId: string }) {
@@ -32,15 +46,32 @@ export function SharedListPage({ listId }: { listId: string }) {
   const [inviteToken, setInviteToken] = useState('');
   const [shareOpen, setShareOpen] = useState(false);
   const [toastMessage, setToastMessage] = useState('');
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [undoItem, setUndoItem] = useState<SharedListItem | null>(null);
+  const [nowTimestamp, setNowTimestamp] = useState(() => Date.now());
   const titleInputRef = useRef<HTMLInputElement>(null);
+  const toastTimerRef = useRef<number | null>(null);
 
   const pendingItems = useMemo(() => items.filter((item) => !item.completed_at), [items]);
   const completedItems = useMemo(() => items.filter((item) => item.completed_at), [items]);
 
-  function showToast(message: string) {
+  function showToast(message: string, durationMs = 2200) {
     setToastMessage(message);
-    window.setTimeout(() => setToastMessage(''), 2200);
+    if (toastTimerRef.current !== null) {
+      window.clearTimeout(toastTimerRef.current);
+    }
+    toastTimerRef.current = window.setTimeout(() => {
+      setToastMessage('');
+      setUndoItem(null);
+      toastTimerRef.current = null;
+    }, durationMs);
+  }
+
+  function clearToast() {
+    if (toastTimerRef.current !== null) {
+      window.clearTimeout(toastTimerRef.current);
+      toastTimerRef.current = null;
+    }
+    setToastMessage('');
   }
 
   async function copyCurrentLink() {
@@ -79,6 +110,16 @@ export function SharedListPage({ listId }: { listId: string }) {
   }, []);
 
   useEffect(() => {
+    const timer = window.setInterval(() => {
+      setNowTimestamp(Date.now());
+    }, 60000);
+
+    return () => {
+      window.clearInterval(timer);
+    };
+  }, []);
+
+  useEffect(() => {
     let cancelled = false;
 
     loadSharedList(listId).then((data) => {
@@ -106,7 +147,7 @@ export function SharedListPage({ listId }: { listId: string }) {
       .map((tag) => tag.trim())
       .filter(Boolean);
 
-    if (!nextTitle || isSubmitting) return;
+    if (!nextTitle) return;
 
     const optimisticId = `optimistic-${crypto.randomUUID()}`;
     const optimisticItem: SharedListItem = {
@@ -118,7 +159,6 @@ export function SharedListPage({ listId }: { listId: string }) {
       completed_at: null,
     };
 
-    setIsSubmitting(true);
     setItems((current) => [optimisticItem, ...current]);
     setTitle('');
     setLinkUrl('');
@@ -136,7 +176,6 @@ export function SharedListPage({ listId }: { listId: string }) {
     } catch {
       setItems((current) => current.filter((item) => item.id !== optimisticId));
     } finally {
-      setIsSubmitting(false);
       titleInputRef.current?.focus();
     }
   }
@@ -144,6 +183,40 @@ export function SharedListPage({ listId }: { listId: string }) {
   async function handleToggleComplete(itemId: string, completed: boolean) {
     await toggleSharedListItem(itemId, completed);
     await refresh();
+  }
+
+  async function handleDeleteItem(item: SharedListItem) {
+    setItems((current) => current.filter((existing) => existing.id !== item.id));
+    setUndoItem(item);
+    showToast('항목을 삭제했어요', 5000);
+
+    try {
+      await deleteSharedListItem(item.id);
+    } catch {
+      setItems((current) => [item, ...current]);
+      setUndoItem(null);
+      clearToast();
+    }
+  }
+
+  async function handleUndoDelete() {
+    if (!undoItem) return;
+    const target = undoItem;
+    setItems((current) => {
+      if (current.some((existing) => existing.id === target.id)) {
+        return current;
+      }
+      return [target, ...current];
+    });
+    setUndoItem(null);
+    clearToast();
+
+    try {
+      await restoreSharedListItem(listId, target);
+    } catch {
+      setItems((current) => current.filter((existing) => existing.id !== target.id));
+      showToast('되돌리기에 실패했어요');
+    }
   }
 
   return (
@@ -180,8 +253,17 @@ export function SharedListPage({ listId }: { listId: string }) {
         </div>
       </div>
       {toastMessage ? (
-        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 rounded-full bg-neutral-950 px-5 py-2.5 text-sm text-white shadow-lg">
-          {toastMessage}
+        <div className="fixed bottom-6 left-1/2 flex -translate-x-1/2 items-center gap-3 rounded-full bg-neutral-950 px-5 py-2.5 text-sm text-white shadow-lg">
+          <span>{toastMessage}</span>
+          {undoItem ? (
+            <button
+              type="button"
+              className="font-medium text-white underline-offset-2 transition hover:underline"
+              onClick={() => void handleUndoDelete()}
+            >
+              되돌리기
+            </button>
+          ) : null}
         </div>
       ) : null}
 
@@ -197,16 +279,17 @@ export function SharedListPage({ listId }: { listId: string }) {
           />
           <button
             type="button"
-            className="mb-1 rounded-full bg-neutral-100 px-3 py-1 text-xs font-medium text-neutral-600 transition hover:bg-neutral-200"
+            aria-label="상세설정"
+            className="mb-1 flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-neutral-100 text-neutral-600 transition hover:bg-neutral-200"
             onClick={() => setDetailOpen((open) => !open)}
           >
-            상세설정
+            <Settings2 className="h-3.5 w-3.5" strokeWidth={2} />
           </button>
           <button
             aria-label="항목 추가"
             className="mb-1 flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-neutral-950 text-white transition hover:scale-[1.03] hover:bg-neutral-800 disabled:bg-neutral-300"
             type="submit"
-            disabled={isSubmitting || !title.trim()}
+            disabled={!title.trim()}
           >
             <Plus className="h-3.5 w-3.5" strokeWidth={2.6} />
           </button>
@@ -215,7 +298,7 @@ export function SharedListPage({ listId }: { listId: string }) {
           <div className="mt-2 flex flex-col gap-2">
             <input
               className="h-9 w-full rounded-lg bg-neutral-50 px-3 text-sm text-neutral-950 outline-none placeholder:text-neutral-400"
-              placeholder="주소를 붙여넣어도 돼요"
+              placeholder="링크 주소 (https://...)"
               value={linkUrl}
               onChange={(event) => setLinkUrl(event.target.value)}
             />
@@ -241,23 +324,10 @@ export function SharedListPage({ listId }: { listId: string }) {
                 onClick={() => void handleToggleComplete(item.id, true)}
               />
               <div className="min-w-0 flex-1">
-                <div className="flex items-start justify-between gap-3">
-                  <h3 className="min-w-0 flex-1 text-[15px] font-medium leading-6 text-neutral-950">{item.title}</h3>
-                  <p className="shrink-0 pt-0.5 text-xs text-neutral-400">{formatCreatedAt(item.created_at)}</p>
-                </div>
-                {item.link_url ? (
-                  <a
-                    href={item.link_url}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="block truncate text-xs text-blue-500 underline"
-                  >
-                    {item.link_url}
-                  </a>
-                ) : null}
-                {item.tags?.length ? (
-                  <div className="mt-0.5 flex flex-wrap gap-1">
-                    {item.tags.map((tag) => (
+                <div className="flex items-start justify-between gap-2">
+                  <div className="flex min-w-0 flex-1 flex-wrap items-center gap-x-1.5 gap-y-1">
+                    <h3 className="text-[15px] font-medium leading-6 text-neutral-950">{item.title}</h3>
+                    {item.tags?.map((tag) => (
                       <span
                         key={tag}
                         className="rounded-full bg-neutral-100 px-2 py-0.5 text-xs text-neutral-600"
@@ -266,7 +336,27 @@ export function SharedListPage({ listId }: { listId: string }) {
                       </span>
                     ))}
                   </div>
-                ) : null}
+                  {item.link_url ? (
+                    <a
+                      href={item.link_url}
+                      target="_blank"
+                      rel="noreferrer"
+                      aria-label="링크 열기"
+                      className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-neutral-100 text-neutral-600 transition hover:bg-neutral-200"
+                    >
+                      <Link2 className="h-3.5 w-3.5" strokeWidth={2} />
+                    </a>
+                  ) : null}
+                  <button
+                    type="button"
+                    aria-label={`${item.title} 카카오맵에서 검색`}
+                    className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[#FEE500] text-neutral-900 transition hover:brightness-95"
+                    onClick={() => openKakaoMap(item.title)}
+                  >
+                    <MapPin className="h-3.5 w-3.5" strokeWidth={2.2} />
+                  </button>
+                  <p className="shrink-0 pt-0.5 text-xs text-neutral-400">{formatCreatedAt(item.created_at, nowTimestamp)}</p>
+                </div>
               </div>
             </article>
           ))}

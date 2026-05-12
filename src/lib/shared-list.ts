@@ -130,6 +130,34 @@ export async function addSharedListItem(listId: string, input: NewSharedListItem
   return data as SharedListItem;
 }
 
+export async function deleteSharedListItem(itemId: string) {
+  await ensureSession();
+
+  const { error } = await supabase.from('bucket_list_items').delete().eq('id', itemId);
+
+  if (error) {
+    throw new Error('delete-item-failed');
+  }
+}
+
+export async function restoreSharedListItem(listId: string, item: SharedListItem) {
+  await ensureSession();
+
+  const { error } = await supabase.from('bucket_list_items').insert({
+    id: item.id,
+    shared_list_id: listId,
+    title: item.title,
+    link_url: item.link_url,
+    tags: item.tags,
+    created_at: item.created_at,
+    completed_at: item.completed_at,
+  });
+
+  if (error) {
+    throw new Error('restore-item-failed');
+  }
+}
+
 export async function toggleSharedListItem(itemId: string, completed: boolean) {
   await ensureSession();
 

@@ -78,6 +78,61 @@ describe('shared list data layer', () => {
     expect(getSession).toHaveBeenCalled();
   });
 
+  it('deletes an item by id', async () => {
+    const eq = vi.fn().mockResolvedValue({ error: null });
+    const deleteFn = vi.fn().mockReturnValue({ eq });
+
+    from.mockImplementation((table: string) => {
+      if (table === 'bucket_list_items') {
+        return { delete: deleteFn };
+      }
+
+      throw new Error(`unexpected table: ${table}`);
+    });
+
+    const { deleteSharedListItem } = await import('../src/lib/shared-list');
+
+    await deleteSharedListItem('item-1');
+
+    expect(deleteFn).toHaveBeenCalled();
+    expect(eq).toHaveBeenCalledWith('id', 'item-1');
+    expect(getSession).toHaveBeenCalled();
+  });
+
+  it('restores a previously deleted item by re-inserting it with the same id', async () => {
+    const insert = vi.fn().mockResolvedValue({ error: null });
+
+    from.mockImplementation((table: string) => {
+      if (table === 'bucket_list_items') {
+        return { insert };
+      }
+
+      throw new Error(`unexpected table: ${table}`);
+    });
+
+    const { restoreSharedListItem } = await import('../src/lib/shared-list');
+
+    await restoreSharedListItem('list-1', {
+      id: 'item-1',
+      title: '한강 산책',
+      link_url: 'https://map.kakao.com/example',
+      tags: ['데이트', '산책'],
+      created_at: '2026-05-12T00:00:00.000Z',
+      completed_at: null,
+    });
+
+    expect(insert).toHaveBeenCalledWith({
+      id: 'item-1',
+      shared_list_id: 'list-1',
+      title: '한강 산책',
+      link_url: 'https://map.kakao.com/example',
+      tags: ['데이트', '산책'],
+      created_at: '2026-05-12T00:00:00.000Z',
+      completed_at: null,
+    });
+    expect(getSession).toHaveBeenCalled();
+  });
+
   it('loads a list by invite token', async () => {
     const single = vi.fn().mockResolvedValue({
       data: {
