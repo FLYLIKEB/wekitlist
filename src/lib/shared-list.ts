@@ -3,7 +3,16 @@ import { supabase } from './supabase';
 export type SharedListItem = {
   id: string;
   title: string;
+  link_url: string | null;
+  tags: string[] | null;
+  created_at: string;
   completed_at: string | null;
+};
+
+export type NewSharedListItemInput = {
+  title: string;
+  linkUrl?: string;
+  tags?: string[];
 };
 
 export type SharedListRecord = {
@@ -68,7 +77,7 @@ export async function loadSharedList(listId: string) {
     supabase.from('shared_lists').select('id, group_name, invite_token').eq('id', listId).single(),
     supabase
       .from('bucket_list_items')
-      .select('id, title, completed_at')
+      .select('id, title, link_url, tags, created_at, completed_at')
       .eq('shared_list_id', listId)
       .order('created_at', { ascending: false }),
   ]);
@@ -84,12 +93,30 @@ export async function loadSharedList(listId: string) {
   return { list: list as SharedListRecord, items: (items ?? []) as SharedListItem[] };
 }
 
-export async function addSharedListItem(listId: string, title: string) {
+export async function loadSharedListByInviteToken(inviteToken: string) {
+  await ensureSession();
+
+  const { data, error } = await supabase
+    .from('shared_lists')
+    .select('id, group_name, invite_token')
+    .eq('invite_token', inviteToken)
+    .single();
+
+  if (error || !data) {
+    throw new Error('load-invite-failed');
+  }
+
+  return data as SharedListRecord;
+}
+
+export async function addSharedListItem(listId: string, input: NewSharedListItemInput) {
   await ensureSession();
 
   const { error } = await supabase.from('bucket_list_items').insert({
     shared_list_id: listId,
-    title,
+    title: input.title,
+    link_url: input.linkUrl?.trim() || null,
+    tags: input.tags?.length ? input.tags : null,
   });
 
   if (error) {
@@ -97,15 +124,15 @@ export async function addSharedListItem(listId: string, title: string) {
   }
 }
 
-export async function completeSharedListItem(itemId: string) {
+export async function toggleSharedListItem(itemId: string, completed: boolean) {
   await ensureSession();
 
   const { error } = await supabase
     .from('bucket_list_items')
-    .update({ completed_at: new Date().toISOString() })
+    .update({ completed_at: completed ? new Date().toISOString() : null })
     .eq('id', itemId);
 
   if (error) {
-    throw new Error('complete-item-failed');
+    throw new Error(completed ? 'complete-item-failed' : 'reopen-item-failed');
   }
 }

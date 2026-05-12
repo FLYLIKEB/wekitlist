@@ -3,8 +3,8 @@
 import { FormEvent, useEffect, useMemo, useState } from 'react';
 import {
   addSharedListItem,
-  completeSharedListItem,
   loadSharedList,
+  toggleSharedListItem,
   type SharedListItem,
 } from '@/lib/shared-list';
 
@@ -47,8 +47,8 @@ export function SharedListPage({ listId }: { listId: string }) {
     await refresh();
   }
 
-  async function handleComplete(itemId: string) {
-    await completeSharedListItem(itemId);
+  async function handleToggleComplete(itemId: string, completed: boolean) {
+    await toggleSharedListItem(itemId, completed);
     await refresh();
   }
 
@@ -70,31 +70,36 @@ export function SharedListPage({ listId }: { listId: string }) {
       </form>
 
       <section className="mt-8">
-        <h2 className="mb-3 text-sm text-neutral-500">해야 할 항목</h2>
-        <div className="space-y-3">
+        <h2 className="mb-2 text-sm text-neutral-500">해야 할 항목</h2>
+        <div>
           {pendingItems.map((item) => (
-            <article key={item.id} className="rounded-3xl border border-neutral-200 px-4 py-4">
-              <div className="flex items-center justify-between gap-3">
-                <h3 className="text-base font-medium text-neutral-950">{item.title}</h3>
-                <button
-                  className="h-8 rounded-full border border-neutral-200 px-3 text-xs text-neutral-700"
-                  type="button"
-                  onClick={() => void handleComplete(item.id)}
-                >
-                  완료
-                </button>
-              </div>
+            <article key={item.id} className="flex min-h-11 items-center gap-3 py-1.5">
+              <button
+                aria-label={`${item.title} 완료`}
+                className="h-5 w-5 shrink-0 rounded-full border border-neutral-300 bg-transparent transition hover:border-neutral-500"
+                type="button"
+                onClick={() => void handleToggleComplete(item.id, true)}
+              />
+              <h3 className="text-[15px] font-medium leading-6 text-neutral-950">{item.title}</h3>
             </article>
           ))}
         </div>
       </section>
 
-      <section className="mt-10">
-        <h2 className="mb-3 text-sm text-neutral-500">완료됨</h2>
-        <div className="space-y-3">
+      <section className="mt-8">
+        <h2 className="mb-2 text-sm text-neutral-500">완료됨</h2>
+        <div>
           {completedItems.map((item) => (
-            <article key={item.id} className="rounded-3xl border border-neutral-200 px-4 py-4">
-              <h3 className="text-base font-medium text-neutral-950">{item.title}</h3>
+            <article key={item.id} className="flex min-h-10 items-center gap-3 py-1">
+              <button
+                aria-label={`${item.title} 다시 열기`}
+                className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full border border-neutral-300 bg-neutral-100 transition hover:border-neutral-500 hover:bg-neutral-50"
+                type="button"
+                onClick={() => void handleToggleComplete(item.id, false)}
+              >
+                <div className="h-2 w-2 rounded-full bg-neutral-400" />
+              </button>
+              <h3 className="text-[15px] leading-6 text-neutral-400 line-through">{item.title}</h3>
             </article>
           ))}
         </div>
