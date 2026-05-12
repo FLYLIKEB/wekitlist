@@ -73,6 +73,16 @@ describe('SharedListPage', () => {
     await waitFor(() => expect(input).toHaveFocus());
   });
 
+  it('shows a home button in the shared list header that links to the home page', async () => {
+    render(<SharedListPage listId="list-1" />);
+
+    const homeLink = await screen.findByRole('link', { name: '홈으로' });
+
+    expect(homeLink).toHaveAttribute('href', '/');
+    expect(screen.getByRole('button', { name: '새로고침' })).toBeVisible();
+    expect(screen.getByRole('button', { name: '공유' })).toBeVisible();
+  });
+
   it('keeps focus and shows the new item immediately after Enter submit', async () => {
     const user = userEvent.setup();
     let resolveCreate: ((item: SharedListItem) => void) | undefined;

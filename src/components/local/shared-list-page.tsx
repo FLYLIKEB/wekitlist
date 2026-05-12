@@ -1,6 +1,7 @@
 'use client';
 
 import { Check, ChevronDown, Link2, MapPin, Plus, RefreshCw, Settings2, X } from 'lucide-react';
+import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { FormEvent, PointerEvent as ReactPointerEvent, TouchEvent as ReactTouchEvent, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
@@ -772,6 +773,12 @@ export function SharedListPage({ listId }: { listId: string }) {
       <div className="mt-2 flex items-center justify-between">
         <h1 className="text-3xl font-semibold tracking-tight text-neutral-950">{groupName}</h1>
         <div className="relative flex items-center gap-1.5">
+          <Link
+            href="/"
+            className="rounded-full bg-neutral-100 px-4 py-1.5 text-sm font-medium text-neutral-700 transition hover:bg-neutral-200"
+          >
+            홈으로
+          </Link>
           <button
             type="button"
             aria-label="새로고침"
