@@ -167,6 +167,7 @@ export function SharedListPage({ listId }: { listId: string }) {
   }, []);
 
   const refreshAndFocus = useCallback(() => {
+    titleInputRef.current?.focus();
     void loadSharedList(listId)
       .then((data) => {
         setGroupName(data.list.group_name);
@@ -174,7 +175,7 @@ export function SharedListPage({ listId }: { listId: string }) {
         setItems(data.items);
       })
       .finally(() => {
-        window.requestAnimationFrame(() => titleInputRef.current?.focus());
+        titleInputRef.current?.focus();
       });
   }, [listId]);
 
