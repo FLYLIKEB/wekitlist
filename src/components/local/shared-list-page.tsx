@@ -15,6 +15,7 @@ import {
   type ListMember,
   type SharedListItem,
 } from '@/lib/shared-list';
+import { openInstallPrompt } from './install-prompt';
 
 type EditingDraft = {
   title: string;
@@ -164,6 +165,60 @@ export function SharedListPage({ listId }: { listId: string }) {
   useEffect(() => {
     titleInputRef.current?.focus();
   }, []);
+
+  useEffect(() => {
+    let startY = 0;
+    let tracking = false;
+    let triggered = false;
+
+    function handleTouchStart(event: TouchEvent) {
+      if (window.scrollY > 0) {
+        tracking = false;
+        return;
+      }
+      const target = event.target as HTMLElement | null;
+      if (target?.closest('input, textarea, [contenteditable="true"]')) {
+        tracking = false;
+        return;
+      }
+      tracking = true;
+      triggered = false;
+      startY = event.touches[0]?.clientY ?? 0;
+    }
+
+    function handleTouchMove(event: TouchEvent) {
+      if (!tracking || triggered) return;
+      const currentY = event.touches[0]?.clientY ?? startY;
+      if (currentY - startY > 70 && window.scrollY <= 0) {
+        triggered = true;
+        void loadSharedList(listId)
+          .then((data) => {
+            setGroupName(data.list.group_name);
+            setInviteToken(data.list.invite_token);
+            setItems(data.items);
+          })
+          .finally(() => {
+            titleInputRef.current?.focus();
+          });
+      }
+    }
+
+    function handleTouchEnd() {
+      tracking = false;
+    }
+
+    window.addEventListener('touchstart', handleTouchStart, { passive: true });
+    window.addEventListener('touchmove', handleTouchMove, { passive: true });
+    window.addEventListener('touchend', handleTouchEnd, { passive: true });
+    window.addEventListener('touchcancel', handleTouchEnd, { passive: true });
+
+    return () => {
+      window.removeEventListener('touchstart', handleTouchStart);
+      window.removeEventListener('touchmove', handleTouchMove);
+      window.removeEventListener('touchend', handleTouchEnd);
+      window.removeEventListener('touchcancel', handleTouchEnd);
+    };
+  }, [listId]);
 
   useEffect(() => {
     const timer = window.setInterval(() => {
@@ -505,6 +560,16 @@ export function SharedListPage({ listId }: { listId: string }) {
                 onClick={() => void copyInviteLink()}
               >
                 초대 링크 복사
+              </button>
+              <button
+                type="button"
+                className="rounded-xl px-4 py-2 text-left text-sm text-neutral-700 transition hover:bg-neutral-50"
+                onClick={() => {
+                  setShareOpen(false);
+                  openInstallPrompt();
+                }}
+              >
+                앱으로 설치
               </button>
             </div>
           ) : null}
