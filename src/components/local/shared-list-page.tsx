@@ -61,6 +61,7 @@ export function SharedListPage({ listId }: { listId: string }) {
   const [toastMessage, setToastMessage] = useState('');
   const [undoItem, setUndoItem] = useState<SharedListItem | null>(null);
   const [completedVisibleCount, setCompletedVisibleCount] = useState(5);
+  const [pendingVisibleCount, setPendingVisibleCount] = useState(20);
   const [members, setMembers] = useState<ListMember[]>([]);
   const [selectedTag, setSelectedTag] = useState<string | null>(null);
   const [editingItemId, setEditingItemId] = useState<string | null>(null);
@@ -615,7 +616,7 @@ export function SharedListPage({ listId }: { listId: string }) {
       <section className="mt-8">
         <h2 className="mb-2 text-sm text-neutral-500">해야 할 항목</h2>
         <div>
-          {pendingItems.map((item) => (
+          {pendingItems.slice(0, pendingVisibleCount).map((item) => (
             <article key={item.id} className="motion-fade-up flex min-h-11 items-start gap-3 py-1.5">
               <button
                 aria-label={`${item.title} 완료`}
@@ -774,6 +775,16 @@ export function SharedListPage({ listId }: { listId: string }) {
             </article>
           ))}
         </div>
+        {pendingItems.length > pendingVisibleCount ? (
+          <button
+            type="button"
+            className="mt-2 flex w-full items-center justify-center gap-1 py-2 text-xs text-neutral-500 transition hover:text-neutral-800"
+            onClick={() => setPendingVisibleCount((count) => count + 20)}
+          >
+            더보기
+            <ChevronDown className="h-3.5 w-3.5" strokeWidth={2} />
+          </button>
+        ) : null}
       </section>
 
       <section className="mt-8">
