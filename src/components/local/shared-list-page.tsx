@@ -1,6 +1,6 @@
 'use client';
 
-import { Link2, MapPin, Plus, Settings2, X } from 'lucide-react';
+import { ChevronDown, Link2, MapPin, Plus, Settings2, X } from 'lucide-react';
 import { FormEvent, useEffect, useMemo, useRef, useState } from 'react';
 import {
   addSharedListItem,
@@ -47,6 +47,7 @@ export function SharedListPage({ listId }: { listId: string }) {
   const [shareOpen, setShareOpen] = useState(false);
   const [toastMessage, setToastMessage] = useState('');
   const [undoItem, setUndoItem] = useState<SharedListItem | null>(null);
+  const [completedVisibleCount, setCompletedVisibleCount] = useState(5);
   const [nowTimestamp, setNowTimestamp] = useState(() => Date.now());
   const titleInputRef = useRef<HTMLInputElement>(null);
   const toastTimerRef = useRef<number | null>(null);
@@ -355,6 +356,14 @@ export function SharedListPage({ listId }: { listId: string }) {
                   >
                     <MapPin className="h-3.5 w-3.5" strokeWidth={2.2} />
                   </button>
+                  <button
+                    type="button"
+                    aria-label={`${item.title} 삭제`}
+                    className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-neutral-100 text-neutral-500 transition hover:bg-neutral-200 hover:text-neutral-700"
+                    onClick={() => void handleDeleteItem(item)}
+                  >
+                    <X className="h-3.5 w-3.5" strokeWidth={2} />
+                  </button>
                   <p className="shrink-0 pt-0.5 text-xs text-neutral-400">{formatCreatedAt(item.created_at, nowTimestamp)}</p>
                 </div>
               </div>
@@ -366,7 +375,7 @@ export function SharedListPage({ listId }: { listId: string }) {
       <section className="mt-8">
         <h2 className="mb-2 text-sm text-neutral-500">완료됨</h2>
         <div>
-          {completedItems.map((item) => (
+          {completedItems.slice(0, completedVisibleCount).map((item) => (
             <article key={item.id} className="flex min-h-10 items-center gap-3 py-1">
               <button
                 aria-label={`${item.title} 다시 열기`}
@@ -376,10 +385,28 @@ export function SharedListPage({ listId }: { listId: string }) {
               >
                 <div className="h-2 w-2 rounded-full bg-neutral-400" />
               </button>
-              <h3 className="text-[15px] leading-6 text-neutral-400 line-through">{item.title}</h3>
+              <h3 className="min-w-0 flex-1 text-[15px] leading-6 text-neutral-400 line-through">{item.title}</h3>
+              <button
+                type="button"
+                aria-label={`${item.title} 삭제`}
+                className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-neutral-100 text-neutral-400 transition hover:bg-neutral-200 hover:text-neutral-700"
+                onClick={() => void handleDeleteItem(item)}
+              >
+                <X className="h-3.5 w-3.5" strokeWidth={2} />
+              </button>
             </article>
           ))}
         </div>
+        {completedItems.length > completedVisibleCount ? (
+          <button
+            type="button"
+            className="mt-2 flex w-full items-center justify-center gap-1 py-2 text-xs text-neutral-500 transition hover:text-neutral-800"
+            onClick={() => setCompletedVisibleCount((count) => count + 5)}
+          >
+            더보기
+            <ChevronDown className="h-3.5 w-3.5" strokeWidth={2} />
+          </button>
+        ) : null}
       </section>
     </main>
   );
