@@ -23,6 +23,7 @@ export default function AboutPage() {
             <ul className="mt-3 space-y-2">
               <li>• 같이 하고 싶은 일을 빠르게 기록하기</li>
               <li>• 링크와 태그를 붙여 아이디어를 정리하기</li>
+              <li>• 항목 이름으로 카카오맵에서 바로 검색하기</li>
               <li>• 함께 보면서 완료 여부를 체크하기</li>
               <li>• 작은 계획과 추억을 한곳에 차곡차곡 쌓기</li>
             </ul>
