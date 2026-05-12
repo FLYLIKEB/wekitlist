@@ -1,5 +1,6 @@
 'use client';
 
+import { Plus } from 'lucide-react';
 import { FormEvent, useEffect, useMemo, useState } from 'react';
 import {
   addSharedListItem,
@@ -42,7 +43,7 @@ export function SharedListPage({ listId }: { listId: string }) {
   async function handleAddItem(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!title.trim()) return;
-    await addSharedListItem(listId, title.trim());
+    await addSharedListItem(listId, { title: title.trim() });
     setTitle('');
     await refresh();
   }
@@ -57,15 +58,23 @@ export function SharedListPage({ listId }: { listId: string }) {
       <p className="text-sm text-neutral-500">Shared list</p>
       <h1 className="mt-2 text-3xl font-semibold tracking-tight text-neutral-950">{groupName}</h1>
 
-      <form className="mt-8 space-y-3 rounded-[2rem] border border-neutral-200 p-4" onSubmit={handleAddItem}>
+      <form
+        className="mt-7 flex items-center gap-3 rounded-[1.6rem] bg-neutral-50/80 px-4 py-2.5 ring-1 ring-inset ring-neutral-200/80"
+        onSubmit={handleAddItem}
+      >
         <input
-          className="h-12 w-full rounded-2xl border border-neutral-200 bg-white px-4 text-sm text-neutral-950 outline-none"
-          placeholder="하고 싶은 일을 적어보세요"
+          className="h-11 min-w-0 flex-1 bg-transparent text-[15px] text-neutral-950 outline-none placeholder:text-neutral-400"
+          placeholder="새 항목"
           value={title}
           onChange={(event) => setTitle(event.target.value)}
         />
-        <button className="h-12 w-full rounded-full bg-neutral-950 px-5 text-sm font-medium text-white" type="submit">
-          항목 추가
+        <button
+          aria-label="항목 추가"
+          className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-neutral-950 text-white transition hover:scale-[1.03] hover:bg-neutral-800 disabled:bg-neutral-300"
+          type="submit"
+          disabled={!title.trim()}
+        >
+          <Plus className="h-4 w-4" strokeWidth={2.4} />
         </button>
       </form>
 
