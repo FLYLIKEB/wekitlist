@@ -169,10 +169,17 @@ export function SharedListPage({ listId }: { listId: string }) {
   useEffect(() => {
     let startY = 0;
     let tracking = false;
-    let triggered = false;
+    let pulled = false;
+    let pointerId: number | null = null;
 
-    function handleTouchStart(event: TouchEvent) {
-      if (window.scrollY > 0) {
+    function currentScrollTop(): number {
+      const docScroll = document.scrollingElement?.scrollTop ?? 0;
+      return Math.max(window.scrollY, docScroll, document.documentElement.scrollTop);
+    }
+
+    function handlePointerDown(event: PointerEvent) {
+      if (event.pointerType !== 'touch') return;
+      if (currentScrollTop() > 0) {
         tracking = false;
         return;
       }
@@ -182,41 +189,50 @@ export function SharedListPage({ listId }: { listId: string }) {
         return;
       }
       tracking = true;
-      triggered = false;
-      startY = event.touches[0]?.clientY ?? 0;
+      pulled = false;
+      pointerId = event.pointerId;
+      startY = event.clientY;
     }
 
-    function handleTouchMove(event: TouchEvent) {
-      if (!tracking || triggered) return;
-      const currentY = event.touches[0]?.clientY ?? startY;
-      if (currentY - startY > 70 && window.scrollY <= 0) {
-        triggered = true;
-        void loadSharedList(listId)
-          .then((data) => {
-            setGroupName(data.list.group_name);
-            setInviteToken(data.list.invite_token);
-            setItems(data.items);
-          })
-          .finally(() => {
-            titleInputRef.current?.focus();
-          });
+    function handlePointerMove(event: PointerEvent) {
+      if (!tracking || event.pointerId !== pointerId) return;
+      if (currentScrollTop() > 0) {
+        tracking = false;
+        return;
+      }
+      if (event.clientY - startY > 60) {
+        pulled = true;
       }
     }
 
-    function handleTouchEnd() {
+    function handlePointerEnd(event: PointerEvent) {
+      if (event.pointerId !== pointerId) return;
+      const wasPulled = pulled;
       tracking = false;
+      pulled = false;
+      pointerId = null;
+      if (!wasPulled) return;
+      void loadSharedList(listId)
+        .then((data) => {
+          setGroupName(data.list.group_name);
+          setInviteToken(data.list.invite_token);
+          setItems(data.items);
+        })
+        .finally(() => {
+          window.requestAnimationFrame(() => titleInputRef.current?.focus());
+        });
     }
 
-    window.addEventListener('touchstart', handleTouchStart, { passive: true });
-    window.addEventListener('touchmove', handleTouchMove, { passive: true });
-    window.addEventListener('touchend', handleTouchEnd, { passive: true });
-    window.addEventListener('touchcancel', handleTouchEnd, { passive: true });
+    document.addEventListener('pointerdown', handlePointerDown, { passive: true });
+    document.addEventListener('pointermove', handlePointerMove, { passive: true });
+    document.addEventListener('pointerup', handlePointerEnd, { passive: true });
+    document.addEventListener('pointercancel', handlePointerEnd, { passive: true });
 
     return () => {
-      window.removeEventListener('touchstart', handleTouchStart);
-      window.removeEventListener('touchmove', handleTouchMove);
-      window.removeEventListener('touchend', handleTouchEnd);
-      window.removeEventListener('touchcancel', handleTouchEnd);
+      document.removeEventListener('pointerdown', handlePointerDown);
+      document.removeEventListener('pointermove', handlePointerMove);
+      document.removeEventListener('pointerup', handlePointerEnd);
+      document.removeEventListener('pointercancel', handlePointerEnd);
     };
   }, [listId]);
 
