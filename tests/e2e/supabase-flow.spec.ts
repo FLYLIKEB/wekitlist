@@ -11,8 +11,15 @@ test('user can create a Supabase-backed list and reload it by URL', async ({ pag
   await expect(page.getByRole('heading', { name: '주말 버킷리스트' })).toBeVisible();
 
   await page.getByPlaceholder('하고 싶은 일을 적어보세요').fill('한강 산책');
+  await page.getByRole('button', { name: '상세설정' }).click();
+  await page.getByPlaceholder('주소를 붙여넣어도 돼요').fill('https://map.kakao.com/example');
+  await page.getByPlaceholder('태그를 쉼표로 나눠 적어보세요').fill('데이트, 산책');
   await page.getByRole('button', { name: '항목 추가' }).click();
-  await expect(page.getByText('한강 산책')).toBeVisible();
+
+  await expect(page.getByRole('link', { name: 'https://map.kakao.com/example' })).toBeVisible();
+  await expect(page.getByText('데이트', { exact: true })).toBeVisible();
+  await expect(page.getByText('산책', { exact: true })).toBeVisible();
+  await expect(page.getByText(/생성/)).toBeVisible();
 
   await page.reload();
   await expect(page.getByRole('heading', { name: '주말 버킷리스트' })).toBeVisible();

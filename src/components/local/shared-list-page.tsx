@@ -9,10 +9,26 @@ import {
   type SharedListItem,
 } from '@/lib/shared-list';
 
+function formatCreatedAt(createdAt: string): string {
+  const date = new Date(createdAt);
+  const now = new Date();
+  const diffMs = now.getTime() - date.getTime();
+  const diffMin = Math.floor(diffMs / 60000);
+  if (diffMin < 1) return '생성됨 방금 전';
+  if (diffMin < 60) return `생성됨 ${diffMin}분 전`;
+  const diffHour = Math.floor(diffMin / 60);
+  if (diffHour < 24) return `생성됨 ${diffHour}시간 전`;
+  const diffDay = Math.floor(diffHour / 24);
+  return `생성됨 ${diffDay}일 전`;
+}
+
 export function SharedListPage({ listId }: { listId: string }) {
   const [groupName, setGroupName] = useState('');
   const [items, setItems] = useState<SharedListItem[]>([]);
   const [title, setTitle] = useState('');
+  const [detailOpen, setDetailOpen] = useState(false);
+  const [linkUrl, setLinkUrl] = useState('');
+  const [tagsText, setTagsText] = useState('');
   const [inviteToken, setInviteToken] = useState('');
   const [shareOpen, setShareOpen] = useState(false);
   const [toastMessage, setToastMessage] = useState('');
@@ -77,8 +93,18 @@ export function SharedListPage({ listId }: { listId: string }) {
   async function handleAddItem(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!title.trim()) return;
-    await addSharedListItem(listId, { title: title.trim() });
+    await addSharedListItem(listId, {
+      title: title.trim(),
+      linkUrl: linkUrl.trim(),
+      tags: tagsText
+        .split(',')
+        .map((tag) => tag.trim())
+        .filter(Boolean),
+    });
     setTitle('');
+    setLinkUrl('');
+    setTagsText('');
+    setDetailOpen(false);
     await refresh();
   }
 
@@ -126,35 +152,85 @@ export function SharedListPage({ listId }: { listId: string }) {
         </div>
       ) : null}
 
-      <form className="mt-6 flex items-end gap-3 border-b border-neutral-200 pb-2" onSubmit={handleAddItem}>
-        <input
-          className="h-10 min-w-0 flex-1 bg-transparent text-[15px] text-neutral-950 outline-none placeholder:text-neutral-400"
-          placeholder="새 항목"
-          value={title}
-          onChange={(event) => setTitle(event.target.value)}
-        />
-        <button
-          aria-label="항목 추가"
-          className="mb-1 flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-neutral-950 text-white transition hover:scale-[1.03] hover:bg-neutral-800 disabled:bg-neutral-300"
-          type="submit"
-          disabled={!title.trim()}
-        >
-          <Plus className="h-3.5 w-3.5" strokeWidth={2.6} />
-        </button>
+      <form className="mt-6 border-b border-neutral-200 pb-2" onSubmit={handleAddItem}>
+        <div className="flex items-end gap-3">
+          <input
+            className="h-10 min-w-0 flex-1 bg-transparent text-[15px] text-neutral-950 outline-none placeholder:text-neutral-400"
+            placeholder="하고 싶은 일을 적어보세요"
+            value={title}
+            onChange={(event) => setTitle(event.target.value)}
+          />
+          <button
+            type="button"
+            className="mb-1 rounded-full bg-neutral-100 px-3 py-1 text-xs font-medium text-neutral-600 transition hover:bg-neutral-200"
+            onClick={() => setDetailOpen((open) => !open)}
+          >
+            상세설정
+          </button>
+          <button
+            aria-label="항목 추가"
+            className="mb-1 flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-neutral-950 text-white transition hover:scale-[1.03] hover:bg-neutral-800 disabled:bg-neutral-300"
+            type="submit"
+            disabled={!title.trim()}
+          >
+            <Plus className="h-3.5 w-3.5" strokeWidth={2.6} />
+          </button>
+        </div>
+        {detailOpen ? (
+          <div className="mt-2 flex flex-col gap-2">
+            <input
+              className="h-9 w-full rounded-lg bg-neutral-50 px-3 text-sm text-neutral-950 outline-none placeholder:text-neutral-400"
+              placeholder="주소를 붙여넣어도 돼요"
+              value={linkUrl}
+              onChange={(event) => setLinkUrl(event.target.value)}
+            />
+            <input
+              className="h-9 w-full rounded-lg bg-neutral-50 px-3 text-sm text-neutral-950 outline-none placeholder:text-neutral-400"
+              placeholder="태그를 쉼표로 나눠 적어보세요"
+              value={tagsText}
+              onChange={(event) => setTagsText(event.target.value)}
+            />
+          </div>
+        ) : null}
       </form>
 
       <section className="mt-8">
         <h2 className="mb-2 text-sm text-neutral-500">해야 할 항목</h2>
         <div>
           {pendingItems.map((item) => (
-            <article key={item.id} className="flex min-h-11 items-center gap-3 py-1.5">
+            <article key={item.id} className="flex min-h-11 items-start gap-3 py-1.5">
               <button
                 aria-label={`${item.title} 완료`}
-                className="h-5 w-5 shrink-0 rounded-full border border-neutral-300 bg-transparent transition hover:border-neutral-500"
+                className="mt-0.5 h-5 w-5 shrink-0 rounded-full border border-neutral-300 bg-transparent transition hover:border-neutral-500"
                 type="button"
                 onClick={() => void handleToggleComplete(item.id, true)}
               />
-              <h3 className="text-[15px] font-medium leading-6 text-neutral-950">{item.title}</h3>
+              <div className="min-w-0 flex-1">
+                <h3 className="text-[15px] font-medium leading-6 text-neutral-950">{item.title}</h3>
+                {item.link_url ? (
+                  <a
+                    href={item.link_url}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="block truncate text-xs text-blue-500 underline"
+                  >
+                    {item.link_url}
+                  </a>
+                ) : null}
+                {item.tags?.length ? (
+                  <div className="mt-0.5 flex flex-wrap gap-1">
+                    {item.tags.map((tag) => (
+                      <span
+                        key={tag}
+                        className="rounded-full bg-neutral-100 px-2 py-0.5 text-xs text-neutral-600"
+                      >
+                        {tag}
+                      </span>
+                    ))}
+                  </div>
+                ) : null}
+                <p className="mt-0.5 text-xs text-neutral-400">{formatCreatedAt(item.created_at)}</p>
+              </div>
             </article>
           ))}
         </div>
