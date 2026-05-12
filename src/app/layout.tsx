@@ -45,6 +45,16 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           Wekitlist
         </Link>
         {children}
+        <footer className="pointer-events-none fixed bottom-0 left-0 right-0 z-30 px-4 pb-[calc(env(safe-area-inset-bottom)+14px)] pt-6">
+          <div className="mx-auto flex max-w-xl justify-center">
+            <Link
+              href="/about"
+              className="pointer-events-auto rounded-full border border-neutral-200/80 bg-white/88 px-4 py-2 text-xs text-neutral-500 shadow-sm backdrop-blur transition hover:text-neutral-900"
+            >
+              서비스 소개
+            </Link>
+          </div>
+        </footer>
         <InstallPrompt />
       </body>
     </html>

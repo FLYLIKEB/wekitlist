@@ -50,6 +50,11 @@ function wasRecentlyDismissed(): boolean {
   }
 }
 
+function isAutomation(): boolean {
+  if (typeof window === 'undefined') return false;
+  return window.navigator.webdriver === true;
+}
+
 export function openInstallPrompt() {
   if (typeof window === 'undefined') return;
   window.dispatchEvent(new CustomEvent(OPEN_EVENT));
@@ -64,6 +69,7 @@ export function InstallPrompt() {
 
   useEffect(() => {
     function show() {
+      if (isAutomation()) return;
       if (appearTimerRef.current !== null) {
         window.clearTimeout(appearTimerRef.current);
       }
@@ -85,7 +91,7 @@ export function InstallPrompt() {
     }
 
     function handleManualOpen() {
-      if (isStandalone()) return;
+      if (isStandalone() || isAutomation()) return;
       try {
         window.localStorage.removeItem(DISMISS_STORAGE_KEY);
       } catch {
