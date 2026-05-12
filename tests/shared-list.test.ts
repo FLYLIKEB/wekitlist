@@ -182,13 +182,13 @@ describe('createSharedList', () => {
     });
   });
 
-  it('inserts shared_lists and participants rows and returns a constructed record', async () => {
+  it('inserts shared_lists and list_members rows and returns a constructed record', async () => {
     const sharedListsInsert = vi.fn().mockResolvedValue({ error: null });
-    const participantsInsert = vi.fn().mockResolvedValue({ error: null });
+    const listMembersInsert = vi.fn().mockResolvedValue({ error: null });
 
     from.mockImplementation((table: string) => {
       if (table === 'shared_lists') return { insert: sharedListsInsert };
-      if (table === 'participants') return { insert: participantsInsert };
+      if (table === 'list_members') return { insert: listMembersInsert };
       throw new Error(`unexpected table: ${table}`);
     });
 
@@ -211,8 +211,9 @@ describe('createSharedList', () => {
       }),
     );
 
-    expect(participantsInsert).toHaveBeenCalledWith({
+    expect(listMembersInsert).toHaveBeenCalledWith({
       shared_list_id: result.id,
+      user_id: 'user-1',
       display_name: '재원',
     });
 

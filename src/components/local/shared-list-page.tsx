@@ -5,9 +5,12 @@ import { FormEvent, useEffect, useMemo, useRef, useState } from 'react';
 import {
   addSharedListItem,
   deleteSharedListItem,
+  getCurrentUserId,
+  loadListMembers,
   loadSharedList,
   restoreSharedListItem,
   toggleSharedListItem,
+  type ListMember,
   type SharedListItem,
 } from '@/lib/shared-list';
 
@@ -48,6 +51,8 @@ export function SharedListPage({ listId }: { listId: string }) {
   const [toastMessage, setToastMessage] = useState('');
   const [undoItem, setUndoItem] = useState<SharedListItem | null>(null);
   const [completedVisibleCount, setCompletedVisibleCount] = useState(5);
+  const [members, setMembers] = useState<ListMember[]>([]);
+  const [currentUserId, setCurrentUserId] = useState('');
   const [nowTimestamp, setNowTimestamp] = useState(() => Date.now());
   const titleInputRef = useRef<HTMLInputElement>(null);
   const toastTimerRef = useRef<number | null>(null);
@@ -132,6 +137,16 @@ export function SharedListPage({ listId }: { listId: string }) {
       setInviteToken(data.list.invite_token);
       setItems(data.items);
     });
+
+    Promise.all([loadListMembers(listId), getCurrentUserId()])
+      .then(([nextMembers, uid]) => {
+        if (cancelled) return;
+        setMembers(nextMembers);
+        setCurrentUserId(uid);
+      })
+      .catch(() => {
+        // members header is non-critical
+      });
 
     return () => {
       cancelled = true;
@@ -220,7 +235,26 @@ export function SharedListPage({ listId }: { listId: string }) {
 
   return (
     <main className="mx-auto min-h-screen w-full max-w-xl px-6 py-10">
-      <p className="text-sm text-neutral-500">Shared list</p>
+      <p className="text-xs text-neutral-400">
+        {members.length === 0 ? (
+          'Shared list'
+        ) : (
+          <>
+            {members.map((member, index) => {
+              const isMe = member.user_id === currentUserId;
+              return (
+                <span key={member.user_id}>
+                  <span className={isMe ? 'font-medium text-neutral-700' : ''}>
+                    {member.display_name}
+                    {isMe ? ' (나)' : ''}
+                  </span>
+                  {index < members.length - 1 ? <span className="text-neutral-300"> · </span> : null}
+                </span>
+              );
+            })}
+          </>
+        )}
+      </p>
       <div className="mt-2 flex items-center justify-between">
         <h1 className="text-3xl font-semibold tracking-tight text-neutral-950">{groupName}</h1>
         <div className="relative">

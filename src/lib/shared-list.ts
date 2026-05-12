@@ -21,6 +21,11 @@ export type SharedListRecord = {
   invite_token: string;
 };
 
+export type ListMember = {
+  user_id: string;
+  display_name: string;
+};
+
 export async function ensureSession() {
   const { data } = await supabase.auth.getSession();
   if (data.session) {
@@ -53,8 +58,9 @@ export async function createSharedList(groupName: string, displayName: string) {
     throw new Error('create-list-failed');
   }
 
-  const { error: memberError } = await supabase.from('participants').insert({
+  const { error: memberError } = await supabase.from('list_members').insert({
     shared_list_id: listId,
+    user_id: session.user.id,
     display_name: displayName,
   });
 
@@ -105,10 +111,10 @@ export async function joinSharedListByInvite(inviteToken: string, displayName: s
   const list = await loadSharedListByInviteToken(inviteToken);
 
   const { data: existing, error: existingError } = await supabase
-    .from('participants')
-    .select('shared_list_id, display_name')
+    .from('list_members')
+    .select('shared_list_id, user_id')
     .eq('shared_list_id', list.id)
-    .eq('display_name', displayName)
+    .eq('user_id', session.user.id)
     .maybeSingle();
 
   if (existingError) {
@@ -119,8 +125,9 @@ export async function joinSharedListByInvite(inviteToken: string, displayName: s
     return list;
   }
 
-  const { error: insertError } = await supabase.from('participants').insert({
+  const { error: insertError } = await supabase.from('list_members').insert({
     shared_list_id: list.id,
+    user_id: session.user.id,
     display_name: displayName,
   });
 
@@ -198,6 +205,27 @@ export async function restoreSharedListItem(listId: string, item: SharedListItem
   if (error) {
     throw new Error('restore-item-failed');
   }
+}
+
+export async function loadListMembers(listId: string) {
+  await ensureSession();
+
+  const { data, error } = await supabase
+    .from('list_members')
+    .select('user_id, display_name')
+    .eq('shared_list_id', listId)
+    .order('created_at', { ascending: true });
+
+  if (error) {
+    throw new Error('load-members-failed');
+  }
+
+  return (data ?? []) as ListMember[];
+}
+
+export async function getCurrentUserId() {
+  const session = await ensureSession();
+  return session.user.id;
 }
 
 export async function toggleSharedListItem(itemId: string, completed: boolean) {
