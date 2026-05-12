@@ -189,20 +189,19 @@ export function SharedListPage({ listId }: { listId: string }) {
   async function handleDeleteItem(item: SharedListItem) {
     setItems((current) => current.filter((existing) => existing.id !== item.id));
     setUndoItem(item);
-    showToast('항목을 삭제했어요', 5000);
+    showToast('항목을 삭제했어요', 10000);
 
     try {
       await deleteSharedListItem(item.id);
     } catch {
+      clearToast();
       setItems((current) => [item, ...current]);
       setUndoItem(null);
-      clearToast();
     }
   }
 
-  async function handleUndoDelete() {
-    if (!undoItem) return;
-    const target = undoItem;
+  async function handleUndoDelete(target: SharedListItem) {
+    clearToast();
     setItems((current) => {
       if (current.some((existing) => existing.id === target.id)) {
         return current;
@@ -210,7 +209,6 @@ export function SharedListPage({ listId }: { listId: string }) {
       return [target, ...current];
     });
     setUndoItem(null);
-    clearToast();
 
     try {
       await restoreSharedListItem(listId, target);
@@ -234,7 +232,7 @@ export function SharedListPage({ listId }: { listId: string }) {
             공유
           </button>
           {shareOpen ? (
-            <div className="absolute right-0 top-full z-10 mt-2 flex min-w-[10rem] flex-col gap-1 rounded-2xl bg-white p-2 shadow-lg ring-1 ring-neutral-200">
+            <div className="motion-scale-in absolute right-0 top-full z-10 mt-2 flex min-w-[10rem] flex-col gap-1 rounded-2xl bg-white p-2 shadow-lg ring-1 ring-neutral-200">
               <button
                 type="button"
                 className="rounded-xl px-4 py-2 text-left text-sm text-neutral-700 transition hover:bg-neutral-50"
@@ -254,13 +252,13 @@ export function SharedListPage({ listId }: { listId: string }) {
         </div>
       </div>
       {toastMessage ? (
-        <div className="fixed bottom-6 left-1/2 flex -translate-x-1/2 items-center gap-3 rounded-full bg-neutral-950 px-5 py-2.5 text-sm text-white shadow-lg">
+        <div className="motion-toast fixed bottom-6 left-1/2 z-20 flex -translate-x-1/2 items-center gap-3 rounded-full bg-neutral-950 px-5 py-2.5 text-sm text-white shadow-lg">
           <span>{toastMessage}</span>
           {undoItem ? (
             <button
               type="button"
               className="font-medium text-white underline-offset-2 transition hover:underline"
-              onClick={() => void handleUndoDelete()}
+              onClick={() => void handleUndoDelete(undoItem)}
             >
               되돌리기
             </button>
@@ -296,7 +294,7 @@ export function SharedListPage({ listId }: { listId: string }) {
           </button>
         </div>
         {detailOpen ? (
-          <div className="mt-2 flex flex-col gap-2">
+          <div className="motion-fade-up mt-2 flex flex-col gap-2">
             <input
               className="h-9 w-full rounded-lg bg-neutral-50 px-3 text-sm text-neutral-950 outline-none placeholder:text-neutral-400"
               placeholder="링크 주소 (https://...)"
@@ -317,7 +315,7 @@ export function SharedListPage({ listId }: { listId: string }) {
         <h2 className="mb-2 text-sm text-neutral-500">해야 할 항목</h2>
         <div>
           {pendingItems.map((item) => (
-            <article key={item.id} className="flex min-h-11 items-start gap-3 py-1.5">
+            <article key={item.id} className="motion-fade-up flex min-h-11 items-start gap-3 py-1.5">
               <button
                 aria-label={`${item.title} 완료`}
                 className="mt-0.5 h-5 w-5 shrink-0 rounded-full border border-neutral-300 bg-transparent transition hover:border-neutral-500"
@@ -376,7 +374,7 @@ export function SharedListPage({ listId }: { listId: string }) {
         <h2 className="mb-2 text-sm text-neutral-500">완료됨</h2>
         <div>
           {completedItems.slice(0, completedVisibleCount).map((item) => (
-            <article key={item.id} className="flex min-h-10 items-center gap-3 py-1">
+            <article key={item.id} className="motion-fade-up flex min-h-10 items-center gap-3 py-1">
               <button
                 aria-label={`${item.title} 다시 열기`}
                 className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full border border-neutral-300 bg-neutral-100 transition hover:border-neutral-500 hover:bg-neutral-50"

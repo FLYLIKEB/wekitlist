@@ -37,7 +37,7 @@ export function LocalApp() {
       <p className="mt-4 text-base leading-7 text-neutral-600">
         커플이나 친구가 빠르게 함께 기록하고 완료하는 초경량 공유 리스트.
       </p>
-      <form className="mt-10 space-y-3" onSubmit={handleCreate}>
+      <form className="motion-fade-up mt-10 space-y-3" onSubmit={handleCreate}>
         <input
           className="h-12 w-full rounded-2xl border border-neutral-200 bg-white px-4 text-sm text-neutral-950 outline-none"
           placeholder="우리 리스트 이름"

@@ -53,9 +53,8 @@ export async function createSharedList(groupName: string, displayName: string) {
     throw new Error('create-list-failed');
   }
 
-  const { error: memberError } = await supabase.from('list_members').insert({
+  const { error: memberError } = await supabase.from('participants').insert({
     shared_list_id: listId,
-    user_id: session.user.id,
     display_name: displayName,
   });
 
@@ -74,7 +73,11 @@ export async function loadSharedList(listId: string) {
   await ensureSession();
 
   const [{ data: list, error: listError }, { data: items, error: itemsError }] = await Promise.all([
-    supabase.from('shared_lists').select('id, group_name, invite_token').eq('id', listId).single(),
+    supabase
+      .from('shared_lists')
+      .select('id, group_name, invite_token')
+      .eq('id', listId)
+      .maybeSingle(),
     supabase
       .from('bucket_list_items')
       .select('id, title, link_url, tags, created_at, completed_at')
@@ -82,8 +85,12 @@ export async function loadSharedList(listId: string) {
       .order('created_at', { ascending: false }),
   ]);
 
-  if (listError || !list) {
+  if (listError) {
     throw new Error('load-list-failed');
+  }
+
+  if (!list) {
+    throw new Error('list-not-found');
   }
 
   if (itemsError) {
@@ -93,6 +100,37 @@ export async function loadSharedList(listId: string) {
   return { list: list as SharedListRecord, items: (items ?? []) as SharedListItem[] };
 }
 
+export async function joinSharedListByInvite(inviteToken: string, displayName: string) {
+  const session = await ensureSession();
+  const list = await loadSharedListByInviteToken(inviteToken);
+
+  const { data: existing, error: existingError } = await supabase
+    .from('participants')
+    .select('shared_list_id, display_name')
+    .eq('shared_list_id', list.id)
+    .eq('display_name', displayName)
+    .maybeSingle();
+
+  if (existingError) {
+    throw new Error('join-list-failed');
+  }
+
+  if (existing) {
+    return list;
+  }
+
+  const { error: insertError } = await supabase.from('participants').insert({
+    shared_list_id: list.id,
+    display_name: displayName,
+  });
+
+  if (insertError) {
+    throw new Error('join-list-failed');
+  }
+
+  return list;
+}
+
 export async function loadSharedListByInviteToken(inviteToken: string) {
   await ensureSession();
 
@@ -100,10 +138,14 @@ export async function loadSharedListByInviteToken(inviteToken: string) {
     .from('shared_lists')
     .select('id, group_name, invite_token')
     .eq('invite_token', inviteToken)
-    .single();
+    .maybeSingle();
 
-  if (error || !data) {
+  if (error) {
     throw new Error('load-invite-failed');
+  }
+
+  if (!data) {
+    throw new Error('invite-not-found');
   }
 
   return data as SharedListRecord;

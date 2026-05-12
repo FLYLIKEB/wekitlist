@@ -2,6 +2,8 @@
 
 :root {
   color-scheme: light;
+  --ease-out-soft: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-in-out-soft: cubic-bezier(0.65, 0, 0.35, 1);
 }
 
 html {
@@ -13,6 +15,7 @@ body {
   background: #ffffff;
   color: #111111;
   font-family: -apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', 'Pretendard', sans-serif;
+  -webkit-tap-highlight-color: transparent;
 }
 
 * {
@@ -25,7 +28,93 @@ textarea {
   font: inherit;
 }
 
+button {
+  transition: transform 200ms var(--ease-out-soft),
+    background-color 200ms var(--ease-out-soft),
+    color 200ms var(--ease-out-soft),
+    box-shadow 200ms var(--ease-out-soft),
+    opacity 200ms var(--ease-out-soft);
+}
+
+button:active:not(:disabled) {
+  transform: scale(0.97);
+}
+
+input,
+textarea {
+  transition: border-color 200ms var(--ease-out-soft),
+    background-color 200ms var(--ease-out-soft),
+    box-shadow 200ms var(--ease-out-soft);
+}
+
+a {
+  transition: color 200ms var(--ease-out-soft), opacity 200ms var(--ease-out-soft);
+}
+
 ::selection {
   background: #111111;
   color: #ffffff;
+}
+
+.ease-out-soft {
+  transition-timing-function: var(--ease-out-soft);
+}
+
+.ease-in-out-soft {
+  transition-timing-function: var(--ease-in-out-soft);
+}
+
+@keyframes fadeSlideUp {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes toastSlideUp {
+  from {
+    opacity: 0;
+    transform: translate(-50%, 8px);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, 0);
+  }
+}
+
+@keyframes scaleIn {
+  from {
+    opacity: 0;
+    transform: scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.motion-fade-up {
+  animation: fadeSlideUp 320ms var(--ease-out-soft) both;
+}
+
+.motion-toast {
+  animation: toastSlideUp 280ms var(--ease-out-soft) both;
+}
+
+.motion-scale-in {
+  animation: scaleIn 220ms var(--ease-out-soft) both;
+  transform-origin: top right;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    transition-duration: 0.001ms !important;
+  }
 }
