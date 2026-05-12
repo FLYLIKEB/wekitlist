@@ -1,6 +1,6 @@
 'use client';
 
-import { FormEvent, useState } from 'react';
+import { FormEvent, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { createSharedList } from '@/lib/shared-list';
 
@@ -10,6 +10,39 @@ export function LocalApp() {
   const [displayName, setDisplayName] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
+  const redirectTarget = useState(() => {
+    if (typeof window === 'undefined') return null;
+
+    if (new URLSearchParams(window.location.search).has('fresh')) {
+      try {
+        localStorage.removeItem('lastVisitedListPath');
+      } catch {
+        // ignore
+      }
+      return null;
+    }
+
+    try {
+      const stored = localStorage.getItem('lastVisitedListPath');
+      return stored && stored.startsWith('/list/') ? stored : null;
+    } catch {
+      return null;
+    }
+  })[0];
+
+  useEffect(() => {
+    if (redirectTarget) {
+      router.replace(redirectTarget);
+    }
+  }, [redirectTarget, router]);
+
+  if (redirectTarget) {
+    return (
+      <main className="flex min-h-screen items-center justify-center">
+        <p className="text-sm text-neutral-400">불러오는 중...</p>
+      </main>
+    );
+  }
 
   async function handleCreate(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();

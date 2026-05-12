@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from 'next';
+import Link from 'next/link';
 import { InstallPrompt } from '@/components/local/install-prompt';
 import './globals.css';
 
@@ -36,6 +37,13 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="ko">
       <body>
+        <Link
+          href="/"
+          aria-label="홈으로 이동"
+          className="fixed left-3 top-3 z-30 text-xs font-semibold tracking-tight text-neutral-500 transition hover:text-neutral-900"
+        >
+          Wekitlist
+        </Link>
         {children}
         <InstallPrompt />
       </body>

@@ -167,6 +167,15 @@ export function SharedListPage({ listId }: { listId: string }) {
   }, [listId]);
 
   useEffect(() => {
+    const path = `/list/${listId}${myName ? `?as=${encodeURIComponent(myName)}` : ''}`;
+    try {
+      localStorage.setItem('lastVisitedListPath', path);
+    } catch {
+      // ignore storage failures (private mode, etc.)
+    }
+  }, [listId, myName]);
+
+  useEffect(() => {
     let cancelled = false;
 
     async function loadAndRegister() {
