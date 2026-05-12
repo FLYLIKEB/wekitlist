@@ -1,6 +1,6 @@
 'use client';
 
-import { ChevronDown, Link2, MapPin, Plus, RefreshCw, Settings2, X } from 'lucide-react';
+import { Check, ChevronDown, Link2, MapPin, Plus, RefreshCw, Settings2, X } from 'lucide-react';
 import { useSearchParams } from 'next/navigation';
 import { FormEvent, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
@@ -780,24 +780,43 @@ export function SharedListPage({ listId }: { listId: string }) {
               <div className="min-w-0 flex-1">
                 {editingItemId === item.id ? (
                   <div className="motion-fade-up flex flex-col gap-2">
-                    <input
-                      ref={editingInputRef}
-                      className="h-9 w-full rounded-lg bg-neutral-50 px-3 text-[15px] font-medium text-neutral-950 outline-none ring-1 ring-neutral-300 focus:ring-neutral-500"
-                      placeholder="항목"
-                      value={editingDraft.title}
-                      onChange={(event) =>
-                        setEditingDraft((current) => ({ ...current, title: event.target.value }))
-                      }
-                      onKeyDown={(event) => {
-                        if (event.key === 'Enter') {
-                          event.preventDefault();
-                          void commitEditing(item);
-                        } else if (event.key === 'Escape') {
-                          event.preventDefault();
-                          cancelEditing();
+                    <div className="flex items-center gap-2">
+                      <input
+                        ref={editingInputRef}
+                        className="h-9 min-w-0 flex-1 rounded-lg bg-neutral-50 px-3 text-[15px] font-medium text-neutral-950 outline-none ring-1 ring-neutral-300 focus:ring-neutral-500"
+                        placeholder="항목"
+                        value={editingDraft.title}
+                        onChange={(event) =>
+                          setEditingDraft((current) => ({ ...current, title: event.target.value }))
                         }
-                      }}
-                    />
+                        onKeyDown={(event) => {
+                          if (event.key === 'Enter') {
+                            event.preventDefault();
+                            void commitEditing(item);
+                          } else if (event.key === 'Escape') {
+                            event.preventDefault();
+                            cancelEditing();
+                          }
+                        }}
+                      />
+                      <button
+                        type="button"
+                        aria-label="취소"
+                        className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-neutral-100 text-neutral-500 transition hover:bg-neutral-200 hover:text-neutral-800"
+                        onClick={cancelEditing}
+                      >
+                        <X className="h-3.5 w-3.5" strokeWidth={2.2} />
+                      </button>
+                      <button
+                        type="button"
+                        aria-label="저장"
+                        className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-neutral-950 text-white transition hover:bg-neutral-800 disabled:bg-neutral-300"
+                        onClick={() => void commitEditing(item)}
+                        disabled={!editingDraft.title.trim()}
+                      >
+                        <Check className="h-3.5 w-3.5" strokeWidth={2.6} />
+                      </button>
+                    </div>
                     <input
                       className="h-9 w-full rounded-lg bg-neutral-50 px-3 text-sm text-neutral-950 outline-none ring-1 ring-neutral-200 focus:ring-neutral-400 placeholder:text-neutral-400"
                       placeholder="링크 주소 (https://...)"
@@ -853,23 +872,6 @@ export function SharedListPage({ listId }: { listId: string }) {
                         })}
                       </div>
                     ) : null}
-                    <div className="flex justify-end gap-2">
-                      <button
-                        type="button"
-                        className="rounded-full bg-neutral-100 px-3 py-1 text-xs text-neutral-600 transition hover:bg-neutral-200"
-                        onClick={cancelEditing}
-                      >
-                        취소
-                      </button>
-                      <button
-                        type="button"
-                        className="rounded-full bg-neutral-950 px-3 py-1 text-xs text-white transition hover:bg-neutral-800 disabled:bg-neutral-300"
-                        onClick={() => void commitEditing(item)}
-                        disabled={!editingDraft.title.trim()}
-                      >
-                        저장
-                      </button>
-                    </div>
                   </div>
                 ) : (
                   <div className="flex items-start justify-between gap-2">
@@ -955,24 +957,43 @@ export function SharedListPage({ listId }: { listId: string }) {
               </button>
               {editingItemId === item.id ? (
                 <div className="motion-fade-up flex min-w-0 flex-1 flex-col gap-2">
-                  <input
-                    ref={editingInputRef}
-                    className="h-9 w-full rounded-lg bg-neutral-50 px-3 text-[15px] text-neutral-700 outline-none ring-1 ring-neutral-300 focus:ring-neutral-500"
-                    placeholder="항목"
-                    value={editingDraft.title}
-                    onChange={(event) =>
-                      setEditingDraft((current) => ({ ...current, title: event.target.value }))
-                    }
-                    onKeyDown={(event) => {
-                      if (event.key === 'Enter') {
-                        event.preventDefault();
-                        void commitEditing(item);
-                      } else if (event.key === 'Escape') {
-                        event.preventDefault();
-                        cancelEditing();
+                  <div className="flex items-center gap-2">
+                    <input
+                      ref={editingInputRef}
+                      className="h-9 min-w-0 flex-1 rounded-lg bg-neutral-50 px-3 text-[15px] text-neutral-700 outline-none ring-1 ring-neutral-300 focus:ring-neutral-500"
+                      placeholder="항목"
+                      value={editingDraft.title}
+                      onChange={(event) =>
+                        setEditingDraft((current) => ({ ...current, title: event.target.value }))
                       }
-                    }}
-                  />
+                      onKeyDown={(event) => {
+                        if (event.key === 'Enter') {
+                          event.preventDefault();
+                          void commitEditing(item);
+                        } else if (event.key === 'Escape') {
+                          event.preventDefault();
+                          cancelEditing();
+                        }
+                      }}
+                    />
+                    <button
+                      type="button"
+                      aria-label="취소"
+                      className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-neutral-100 text-neutral-500 transition hover:bg-neutral-200 hover:text-neutral-800"
+                      onClick={cancelEditing}
+                    >
+                      <X className="h-3.5 w-3.5" strokeWidth={2.2} />
+                    </button>
+                    <button
+                      type="button"
+                      aria-label="저장"
+                      className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-neutral-950 text-white transition hover:bg-neutral-800 disabled:bg-neutral-300"
+                      onClick={() => void commitEditing(item)}
+                      disabled={!editingDraft.title.trim()}
+                    >
+                      <Check className="h-3.5 w-3.5" strokeWidth={2.6} />
+                    </button>
+                  </div>
                   <input
                     className="h-9 w-full rounded-lg bg-neutral-50 px-3 text-sm text-neutral-700 outline-none ring-1 ring-neutral-200 focus:ring-neutral-400 placeholder:text-neutral-400"
                     placeholder="링크 주소 (https://...)"
@@ -1028,23 +1049,6 @@ export function SharedListPage({ listId }: { listId: string }) {
                       })}
                     </div>
                   ) : null}
-                  <div className="flex justify-end gap-2">
-                    <button
-                      type="button"
-                      className="rounded-full bg-neutral-100 px-3 py-1 text-xs text-neutral-600 transition hover:bg-neutral-200"
-                      onClick={cancelEditing}
-                    >
-                      취소
-                    </button>
-                    <button
-                      type="button"
-                      className="rounded-full bg-neutral-950 px-3 py-1 text-xs text-white transition hover:bg-neutral-800 disabled:bg-neutral-300"
-                      onClick={() => void commitEditing(item)}
-                      disabled={!editingDraft.title.trim()}
-                    >
-                      저장
-                    </button>
-                  </div>
                 </div>
               ) : (
                 <h3
