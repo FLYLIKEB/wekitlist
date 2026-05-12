@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import '@testing-library/jest-dom/vitest';
-import { cleanup, render, screen, waitFor } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { SharedListPage } from '../src/components/local/shared-list-page';
@@ -33,6 +33,12 @@ vi.mock('next/navigation', () => ({
 afterEach(() => {
   cleanup();
 });
+
+function fireSwipeOpen(target: HTMLElement, startX = 220, endX = 120) {
+  fireEvent.touchStart(target, { touches: [{ clientX: startX, clientY: 20 }] });
+  fireEvent.touchMove(target, { touches: [{ clientX: endX, clientY: 20 }] });
+  fireEvent.touchEnd(target, { changedTouches: [{ clientX: endX, clientY: 20 }] });
+}
 
 describe('SharedListPage', () => {
   beforeEach(() => {
@@ -168,7 +174,7 @@ describe('SharedListPage', () => {
     });
   });
 
-  it('deletes a pending item immediately and shows an undo button that restores it', async () => {
+  it('reveals delete for a pending item after left swipe and deletes only after tapping the revealed action', async () => {
     const user = userEvent.setup();
 
     sharedListMocks.loadSharedList.mockResolvedValue({
@@ -194,7 +200,13 @@ describe('SharedListPage', () => {
 
     render(<SharedListPage listId="list-1" />);
 
-    await screen.findByText('한강 산책');
+    const row = await screen.findByTestId('swipe-row-item-1');
+    fireSwipeOpen(row);
+
+    await waitFor(() => {
+      expect(row).toHaveAttribute('data-swipe-open', 'true');
+    });
+    expect(sharedListMocks.deleteSharedListItem).not.toHaveBeenCalled();
 
     await user.click(screen.getByRole('button', { name: '한강 산책 삭제' }));
 
@@ -217,7 +229,7 @@ describe('SharedListPage', () => {
     });
   });
 
-  it('deletes a completed item and undo restores it as completed', async () => {
+  it('deletes a completed item after swipe reveal and undo restores it as completed', async () => {
     const user = userEvent.setup();
 
     sharedListMocks.loadSharedList.mockResolvedValue({
@@ -243,7 +255,8 @@ describe('SharedListPage', () => {
 
     render(<SharedListPage listId="list-1" />);
 
-    await screen.findByText('서울숲 피크닉');
+    const row = await screen.findByTestId('swipe-row-item-done');
+    fireSwipeOpen(row);
 
     await user.click(screen.getByRole('button', { name: '서울숲 피크닉 삭제' }));
 
@@ -264,6 +277,85 @@ describe('SharedListPage', () => {
           completed_at: '2026-05-12T01:00:00.000Z',
         }),
       );
+    });
+  });
+
+  it('keeps only one swipe row open at a time', async () => {
+    sharedListMocks.loadSharedList.mockResolvedValue({
+      list: {
+        id: 'list-1',
+        group_name: '주말 버킷리스트',
+        invite_token: 'invite-1',
+      },
+      items: [
+        {
+          id: 'item-1',
+          title: '한강 산책',
+          link_url: null,
+          tags: null,
+          created_at: '2026-05-12T00:00:00.000Z',
+          completed_at: null,
+        },
+        {
+          id: 'item-2',
+          title: '서울숲 피크닉',
+          link_url: null,
+          tags: null,
+          created_at: '2026-05-12T00:00:01.000Z',
+          completed_at: null,
+        },
+      ],
+    });
+
+    render(<SharedListPage listId="list-1" />);
+
+    const firstRow = await screen.findByTestId('swipe-row-item-1');
+    const secondRow = await screen.findByTestId('swipe-row-item-2');
+
+    fireSwipeOpen(firstRow);
+    await waitFor(() => {
+      expect(firstRow).toHaveAttribute('data-swipe-open', 'true');
+    });
+
+    fireSwipeOpen(secondRow);
+
+    await waitFor(() => {
+      expect(secondRow).toHaveAttribute('data-swipe-open', 'true');
+      expect(firstRow).toHaveAttribute('data-swipe-open', 'false');
+    });
+  });
+
+  it('closes an open swipe row when the user taps outside', async () => {
+    sharedListMocks.loadSharedList.mockResolvedValue({
+      list: {
+        id: 'list-1',
+        group_name: '주말 버킷리스트',
+        invite_token: 'invite-1',
+      },
+      items: [
+        {
+          id: 'item-1',
+          title: '한강 산책',
+          link_url: null,
+          tags: null,
+          created_at: '2026-05-12T00:00:00.000Z',
+          completed_at: null,
+        },
+      ],
+    });
+
+    render(<SharedListPage listId="list-1" />);
+
+    const row = await screen.findByTestId('swipe-row-item-1');
+    fireSwipeOpen(row);
+    await waitFor(() => {
+      expect(row).toHaveAttribute('data-swipe-open', 'true');
+    });
+
+    fireEvent.pointerDown(document.body, { clientX: 10, clientY: 10, pointerType: 'touch' });
+
+    await waitFor(() => {
+      expect(row).toHaveAttribute('data-swipe-open', 'false');
     });
   });
 
