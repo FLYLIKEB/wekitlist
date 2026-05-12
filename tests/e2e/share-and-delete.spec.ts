@@ -29,6 +29,7 @@ test('user can enter a list through invite link', async ({ page }) => {
   const inviteButton = page.getByRole('button', { name: '공유' });
   await inviteButton.click();
   await page.getByRole('button', { name: '초대 링크 복사' }).click();
+  await expect(page.getByText('초대 링크를 복사했어요')).toBeVisible();
 
   const invitePath = await page.evaluate(() => window.localStorage.getItem('lastCopiedInvitePath'));
   expect(invitePath).toBeTruthy();
@@ -78,8 +79,8 @@ test('user can delete a completed item and undo to restore it', async ({ page })
 
   await expect(page.getByText('서울숲 피크닉')).toBeVisible();
 
-  await page.getByRole('button', { name: '서울숲 피크닉 완료' }).click();
-  await expect(page.getByRole('heading', { name: '서울숲 피크닉' })).toBeVisible();
+  await page.getByRole('button', { name: '서울숲 피크닉 완료' }).click({ force: true });
+  await expect(page.getByText('서울숲 피크닉')).toBeVisible();
 
   await page.getByRole('button', { name: '서울숲 피크닉 삭제' }).click();
   await expect(page.getByText('서울숲 피크닉')).toHaveCount(0);

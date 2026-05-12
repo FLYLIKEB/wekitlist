@@ -12,6 +12,8 @@ const sharedListMocks = vi.hoisted(() => ({
   toggleSharedListItem: vi.fn(),
   deleteSharedListItem: vi.fn(),
   restoreSharedListItem: vi.fn(),
+  loadListMembers: vi.fn(),
+  getCurrentUserId: vi.fn(),
 }));
 
 vi.mock('../src/lib/shared-list', () => ({
@@ -20,6 +22,8 @@ vi.mock('../src/lib/shared-list', () => ({
   toggleSharedListItem: sharedListMocks.toggleSharedListItem,
   deleteSharedListItem: sharedListMocks.deleteSharedListItem,
   restoreSharedListItem: sharedListMocks.restoreSharedListItem,
+  loadListMembers: sharedListMocks.loadListMembers,
+  getCurrentUserId: sharedListMocks.getCurrentUserId,
 }));
 
 afterEach(() => {
@@ -47,6 +51,8 @@ describe('SharedListPage', () => {
       created_at: '2026-05-12T00:00:00.000Z',
       completed_at: null,
     } satisfies SharedListItem));
+    sharedListMocks.loadListMembers.mockResolvedValue([]);
+    sharedListMocks.getCurrentUserId.mockResolvedValue('user-1');
   });
 
   it('focuses the new item input on first render', async () => {

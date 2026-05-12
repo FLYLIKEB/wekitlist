@@ -13,6 +13,7 @@ export function InvitePage({ token }: { token: string }) {
   const [listId, setListId] = useState('');
   const [displayName, setDisplayName] = useState('');
   const [error, setError] = useState('');
+  const [joinError, setJoinError] = useState('');
 
   useEffect(() => {
     let cancelled = false;
@@ -24,8 +25,10 @@ export function InvitePage({ token }: { token: string }) {
         setListId(list.id);
         setStatus('ready');
       })
-      .catch(() => {
+      .catch((err: unknown) => {
         if (cancelled) return;
+        const code = err instanceof Error ? err.message : String(err);
+        setError(code || 'unknown-error');
         setStatus('invalid');
       });
 
@@ -34,26 +37,20 @@ export function InvitePage({ token }: { token: string }) {
     };
   }, [token]);
 
-  useEffect(() => {
-    if (status === 'invalid') {
-      const timer = window.setTimeout(() => router.replace('/'), 1200);
-      return () => window.clearTimeout(timer);
-    }
-  }, [status, router]);
-
   async function handleJoin(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const name = displayName.trim();
     if (!name || status !== 'ready') return;
 
     setStatus('joining');
-    setError('');
+    setJoinError('');
 
     try {
       await joinSharedListByInvite(token, name);
       router.replace(`/list/${listId}`);
-    } catch {
-      setError('참여에 실패했어요. 다시 시도해주세요.');
+    } catch (err: unknown) {
+      const code = err instanceof Error ? err.message : String(err);
+      setJoinError(`참여에 실패했어요 (${code})`);
       setStatus('ready');
     }
   }
@@ -68,8 +65,21 @@ export function InvitePage({ token }: { token: string }) {
 
   if (status === 'invalid') {
     return (
-      <main className="flex min-h-screen items-center justify-center">
-        <p className="text-sm text-neutral-400">유효하지 않은 초대 링크예요</p>
+      <main className="mx-auto flex min-h-screen w-full max-w-xl flex-col items-center justify-center px-6 text-center">
+        <p className="text-sm text-neutral-500">초대 링크를 열 수 없어요</p>
+        <p className="mt-2 break-all text-xs text-neutral-400">
+          token: {token}
+        </p>
+        <p className="mt-1 break-all text-xs text-red-400">
+          reason: {error || 'unknown'}
+        </p>
+        <button
+          type="button"
+          className="mt-6 rounded-full bg-neutral-100 px-4 py-2 text-xs text-neutral-700"
+          onClick={() => router.replace('/')}
+        >
+          홈으로
+        </button>
       </main>
     );
   }
@@ -90,7 +100,7 @@ export function InvitePage({ token }: { token: string }) {
           onChange={(event) => setDisplayName(event.target.value)}
           disabled={status === 'joining'}
         />
-        {error ? <p className="text-sm text-red-500">{error}</p> : null}
+        {joinError ? <p className="text-sm text-red-500">{joinError}</p> : null}
         <button
           type="submit"
           className="mt-2 h-12 w-full rounded-full bg-neutral-950 px-5 text-sm font-medium text-white disabled:bg-neutral-300"

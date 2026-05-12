@@ -56,6 +56,7 @@ export function SharedListPage({ listId }: { listId: string }) {
   const [nowTimestamp, setNowTimestamp] = useState(() => Date.now());
   const titleInputRef = useRef<HTMLInputElement>(null);
   const toastTimerRef = useRef<number | null>(null);
+  const deleteRequestRef = useRef(new Map<string, Promise<void>>());
 
   const pendingItems = useMemo(() => items.filter((item) => !item.completed_at), [items]);
   const completedItems = useMemo(() => items.filter((item) => item.completed_at), [items]);
@@ -206,17 +207,32 @@ export function SharedListPage({ listId }: { listId: string }) {
     setUndoItem(item);
     showToast('항목을 삭제했어요', 10000);
 
+    const deleteRequest = deleteSharedListItem(item.id);
+    deleteRequestRef.current.set(item.id, deleteRequest);
+
     try {
-      await deleteSharedListItem(item.id);
+      await deleteRequest;
     } catch {
       clearToast();
       setItems((current) => [item, ...current]);
       setUndoItem(null);
+    } finally {
+      deleteRequestRef.current.delete(item.id);
     }
   }
 
   async function handleUndoDelete(target: SharedListItem) {
     clearToast();
+    const pendingDelete = deleteRequestRef.current.get(target.id);
+
+    if (pendingDelete) {
+      try {
+        await pendingDelete;
+      } catch {
+        return;
+      }
+    }
+
     setItems((current) => {
       if (current.some((existing) => existing.id === target.id)) {
         return current;

@@ -134,7 +134,7 @@ describe('shared list data layer', () => {
   });
 
   it('loads a list by invite token', async () => {
-    const single = vi.fn().mockResolvedValue({
+    const maybeSingle = vi.fn().mockResolvedValue({
       data: {
         id: 'list-1',
         group_name: '주말 버킷리스트',
@@ -143,7 +143,7 @@ describe('shared list data layer', () => {
       error: null,
     });
 
-    const eq = vi.fn().mockReturnValue({ single });
+    const eq = vi.fn().mockReturnValue({ maybeSingle });
     const select = vi.fn().mockReturnValue({ eq });
 
     from.mockImplementation((table: string) => {
