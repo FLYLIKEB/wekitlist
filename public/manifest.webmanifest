@@ -1,0 +1,10 @@
+{
+  "name": "Wekitlist",
+  "short_name": "Wekitlist",
+  "description": "같이 쓰는 초경량 공유 버킷리스트",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#ffffff",
+  "start_url": "/",
+  "icons": []
+}

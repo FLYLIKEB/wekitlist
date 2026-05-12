@@ -1,0 +1,10 @@
+node_modules
+.next
+playwright-report
+coverage
+.env.local
+.env
+.DS_Store
+.omc
+test-results
+tsconfig.tsbuildinfo
