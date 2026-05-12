@@ -1,6 +1,6 @@
 'use client';
 
-import { Check, ChevronDown, Link2, MapPin, Plus, RefreshCw, Settings2, X } from 'lucide-react';
+import { Check, ChevronDown, House, Link2, MapPin, Plus, RefreshCw, Settings2, Share2, X } from 'lucide-react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { FormEvent, PointerEvent as ReactPointerEvent, TouchEvent as ReactTouchEvent, useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -775,9 +775,10 @@ export function SharedListPage({ listId }: { listId: string }) {
         <div className="relative flex items-center gap-1.5">
           <Link
             href="/?fresh=1"
-            className="rounded-full bg-neutral-100 px-4 py-1.5 text-sm font-medium text-neutral-700 transition hover:bg-neutral-200"
+            aria-label="홈으로"
+            className="flex h-8 w-8 items-center justify-center rounded-full bg-neutral-100 text-neutral-700 transition hover:bg-neutral-200"
           >
-            홈으로
+            <House className="h-4 w-4" strokeWidth={2} />
           </Link>
           <button
             type="button"
@@ -789,10 +790,11 @@ export function SharedListPage({ listId }: { listId: string }) {
           </button>
           <button
             type="button"
-            className="rounded-full bg-neutral-100 px-4 py-1.5 text-sm font-medium text-neutral-700 transition hover:bg-neutral-200"
+            aria-label="공유"
+            className="flex h-8 w-8 items-center justify-center rounded-full bg-neutral-100 text-neutral-700 transition hover:bg-neutral-200"
             onClick={() => setShareOpen((open) => !open)}
           >
-            공유
+            <Share2 className="h-4 w-4" strokeWidth={2} />
           </button>
           {shareOpen ? (
             <div className="motion-scale-in absolute right-0 top-full z-10 mt-2 flex min-w-[10rem] flex-col gap-1 rounded-2xl bg-white p-2 shadow-lg ring-1 ring-neutral-200">
