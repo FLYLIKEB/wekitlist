@@ -141,21 +141,20 @@ export async function joinSharedListByInvite(inviteToken: string, displayName: s
 export async function loadSharedListByInviteToken(inviteToken: string) {
   await ensureSession();
 
-  const { data, error } = await supabase
-    .from('shared_lists')
-    .select('id, group_name, invite_token')
-    .eq('invite_token', inviteToken)
-    .maybeSingle();
+  const { data, error } = await supabase.rpc('find_list_by_invite_token', {
+    p_token: inviteToken,
+  });
 
   if (error) {
     throw new Error('load-invite-failed');
   }
 
-  if (!data) {
+  const record = Array.isArray(data) ? data[0] : data;
+  if (!record) {
     throw new Error('invite-not-found');
   }
 
-  return data as SharedListRecord;
+  return record as SharedListRecord;
 }
 
 export async function addSharedListItem(listId: string, input: NewSharedListItemInput) {
