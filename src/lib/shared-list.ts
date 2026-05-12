@@ -203,3 +203,38 @@ export async function updateSharedListItemTitle(itemId: string, title: string) {
     throw new Error('update-title-failed');
   }
 }
+
+export type SharedListItemEdits = {
+  title: string;
+  linkUrl: string;
+  tags: string[];
+};
+
+export async function updateSharedListItem(itemId: string, edits: SharedListItemEdits) {
+  const trimmedTitle = edits.title.trim();
+  if (!trimmedTitle) {
+    throw new Error('empty-title');
+  }
+
+  const trimmedLink = edits.linkUrl.trim();
+  const cleanedTags = edits.tags.map((tag) => tag.trim()).filter(Boolean);
+
+  const { error } = await supabase
+    .from('bucket_list_items')
+    .update({
+      title: trimmedTitle,
+      link_url: trimmedLink || null,
+      tags: cleanedTags.length ? cleanedTags : null,
+    })
+    .eq('id', itemId);
+
+  if (error) {
+    throw new Error('update-item-failed');
+  }
+
+  return {
+    title: trimmedTitle,
+    link_url: trimmedLink || null,
+    tags: cleanedTags.length ? cleanedTags : null,
+  };
+}

@@ -11,10 +11,16 @@ import {
   registerMember,
   restoreSharedListItem,
   toggleSharedListItem,
-  updateSharedListItemTitle,
+  updateSharedListItem,
   type ListMember,
   type SharedListItem,
 } from '@/lib/shared-list';
+
+type EditingDraft = {
+  title: string;
+  linkUrl: string;
+  tagsText: string;
+};
 
 const LONG_PRESS_MS = 450;
 
@@ -58,7 +64,11 @@ export function SharedListPage({ listId }: { listId: string }) {
   const [members, setMembers] = useState<ListMember[]>([]);
   const [selectedTag, setSelectedTag] = useState<string | null>(null);
   const [editingItemId, setEditingItemId] = useState<string | null>(null);
-  const [editingDraft, setEditingDraft] = useState('');
+  const [editingDraft, setEditingDraft] = useState<EditingDraft>({
+    title: '',
+    linkUrl: '',
+    tagsText: '',
+  });
   const searchParams = useSearchParams();
   const myName = searchParams.get('as')?.trim() ?? '';
   const [nowTimestamp, setNowTimestamp] = useState(() => Date.now());
@@ -274,12 +284,16 @@ export function SharedListPage({ listId }: { listId: string }) {
 
   function startEditing(item: SharedListItem) {
     setEditingItemId(item.id);
-    setEditingDraft(item.title);
+    setEditingDraft({
+      title: item.title,
+      linkUrl: item.link_url ?? '',
+      tagsText: item.tags?.join(', ') ?? '',
+    });
   }
 
   function cancelEditing() {
     setEditingItemId(null);
-    setEditingDraft('');
+    setEditingDraft({ title: '', linkUrl: '', tagsText: '' });
   }
 
   function clearLongPressTimer() {
@@ -321,26 +335,64 @@ export function SharedListPage({ listId }: { listId: string }) {
   }, [editingItemId]);
 
   async function commitEditing(item: SharedListItem) {
-    const nextTitle = editingDraft.trim();
-    if (!nextTitle || nextTitle === item.title) {
+    const nextTitle = editingDraft.title.trim();
+    if (!nextTitle) {
       cancelEditing();
       return;
     }
 
+    const nextLinkUrl = editingDraft.linkUrl.trim();
+    const nextTags = editingDraft.tagsText
+      .split(',')
+      .map((tag) => tag.trim())
+      .filter(Boolean);
+
     const previousTitle = item.title;
+    const previousLinkUrl = item.link_url;
+    const previousTags = item.tags;
+
+    const tagsChanged =
+      (previousTags ?? []).length !== nextTags.length ||
+      nextTags.some((tag, index) => tag !== (previousTags ?? [])[index]);
+    const linkChanged = (previousLinkUrl ?? '') !== nextLinkUrl;
+    const titleChanged = previousTitle !== nextTitle;
+
+    if (!tagsChanged && !linkChanged && !titleChanged) {
+      cancelEditing();
+      return;
+    }
+
     setItems((current) =>
       current.map((existing) =>
-        existing.id === item.id ? { ...existing, title: nextTitle } : existing,
+        existing.id === item.id
+          ? {
+              ...existing,
+              title: nextTitle,
+              link_url: nextLinkUrl || null,
+              tags: nextTags.length ? nextTags : null,
+            }
+          : existing,
       ),
     );
     cancelEditing();
 
     try {
-      await updateSharedListItemTitle(item.id, nextTitle);
+      await updateSharedListItem(item.id, {
+        title: nextTitle,
+        linkUrl: nextLinkUrl,
+        tags: nextTags,
+      });
     } catch {
       setItems((current) =>
         current.map((existing) =>
-          existing.id === item.id ? { ...existing, title: previousTitle } : existing,
+          existing.id === item.id
+            ? {
+                ...existing,
+                title: previousTitle,
+                link_url: previousLinkUrl,
+                tags: previousTags,
+              }
+            : existing,
         ),
       );
       showToast('수정에 실패했어요');
@@ -529,78 +581,131 @@ export function SharedListPage({ listId }: { listId: string }) {
                 onClick={() => void handleToggleComplete(item.id, true)}
               />
               <div className="min-w-0 flex-1">
-                <div className="flex items-start justify-between gap-2">
-                  <div className="flex min-w-0 flex-1 flex-wrap items-center gap-x-1.5 gap-y-1">
-                    {editingItemId === item.id ? (
-                      <input
-                        ref={editingInputRef}
-                        className="min-w-0 flex-1 rounded-md bg-neutral-50 px-2 py-0.5 text-[15px] font-medium leading-6 text-neutral-950 outline-none ring-1 ring-neutral-300 focus:ring-neutral-500"
-                        value={editingDraft}
-                        onChange={(event) => setEditingDraft(event.target.value)}
-                        onBlur={() => void commitEditing(item)}
-                        onKeyDown={(event) => {
-                          if (event.key === 'Enter') {
-                            event.preventDefault();
-                            void commitEditing(item);
-                          } else if (event.key === 'Escape') {
-                            event.preventDefault();
-                            cancelEditing();
-                          }
-                        }}
-                      />
-                    ) : (
-                      <h3
-                        className="cursor-text select-none text-[15px] font-medium leading-6 text-neutral-950"
-                        onPointerDown={() => handleLongPressStart(item)}
-                        onPointerUp={handleLongPressEnd}
-                        onPointerLeave={handleLongPressEnd}
-                        onPointerCancel={handleLongPressEnd}
-                        onContextMenu={(event) => {
+                {editingItemId === item.id ? (
+                  <div className="motion-fade-up flex flex-col gap-2">
+                    <input
+                      ref={editingInputRef}
+                      className="h-9 w-full rounded-lg bg-neutral-50 px-3 text-[15px] font-medium text-neutral-950 outline-none ring-1 ring-neutral-300 focus:ring-neutral-500"
+                      placeholder="항목"
+                      value={editingDraft.title}
+                      onChange={(event) =>
+                        setEditingDraft((current) => ({ ...current, title: event.target.value }))
+                      }
+                      onKeyDown={(event) => {
+                        if (event.key === 'Enter') {
                           event.preventDefault();
-                          startEditing(item);
-                        }}
+                          void commitEditing(item);
+                        } else if (event.key === 'Escape') {
+                          event.preventDefault();
+                          cancelEditing();
+                        }
+                      }}
+                    />
+                    <input
+                      className="h-9 w-full rounded-lg bg-neutral-50 px-3 text-sm text-neutral-950 outline-none ring-1 ring-neutral-200 focus:ring-neutral-400 placeholder:text-neutral-400"
+                      placeholder="링크 주소 (https://...)"
+                      value={editingDraft.linkUrl}
+                      onChange={(event) =>
+                        setEditingDraft((current) => ({ ...current, linkUrl: event.target.value }))
+                      }
+                      onKeyDown={(event) => {
+                        if (event.key === 'Enter') {
+                          event.preventDefault();
+                          void commitEditing(item);
+                        } else if (event.key === 'Escape') {
+                          event.preventDefault();
+                          cancelEditing();
+                        }
+                      }}
+                    />
+                    <input
+                      className="h-9 w-full rounded-lg bg-neutral-50 px-3 text-sm text-neutral-950 outline-none ring-1 ring-neutral-200 focus:ring-neutral-400 placeholder:text-neutral-400"
+                      placeholder="태그를 쉼표로 나눠 적어보세요"
+                      value={editingDraft.tagsText}
+                      onChange={(event) =>
+                        setEditingDraft((current) => ({ ...current, tagsText: event.target.value }))
+                      }
+                      onKeyDown={(event) => {
+                        if (event.key === 'Enter') {
+                          event.preventDefault();
+                          void commitEditing(item);
+                        } else if (event.key === 'Escape') {
+                          event.preventDefault();
+                          cancelEditing();
+                        }
+                      }}
+                    />
+                    <div className="flex justify-end gap-2">
+                      <button
+                        type="button"
+                        className="rounded-full bg-neutral-100 px-3 py-1 text-xs text-neutral-600 transition hover:bg-neutral-200"
+                        onClick={cancelEditing}
                       >
-                        {item.title}
-                      </h3>
-                    )}
-                    {item.tags?.map((tag) => (
-                      <span
-                        key={tag}
-                        className="rounded-full bg-neutral-100 px-2 py-0.5 text-xs text-neutral-600"
+                        취소
+                      </button>
+                      <button
+                        type="button"
+                        className="rounded-full bg-neutral-950 px-3 py-1 text-xs text-white transition hover:bg-neutral-800 disabled:bg-neutral-300"
+                        onClick={() => void commitEditing(item)}
+                        disabled={!editingDraft.title.trim()}
                       >
-                        {tag}
-                      </span>
-                    ))}
+                        저장
+                      </button>
+                    </div>
                   </div>
-                  {item.link_url ? (
-                    <a
-                      href={item.link_url}
-                      target="_blank"
-                      rel="noreferrer"
-                      aria-label="링크 열기"
-                      className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-neutral-100 text-neutral-600 transition hover:bg-neutral-200"
+                ) : (
+                  <div className="flex items-start justify-between gap-2">
+                    <div
+                      className="flex min-w-0 flex-1 cursor-text select-none flex-wrap items-center gap-x-1.5 gap-y-1"
+                      onPointerDown={() => handleLongPressStart(item)}
+                      onPointerUp={handleLongPressEnd}
+                      onPointerLeave={handleLongPressEnd}
+                      onPointerCancel={handleLongPressEnd}
+                      onContextMenu={(event) => {
+                        event.preventDefault();
+                        startEditing(item);
+                      }}
                     >
-                      <Link2 className="h-3.5 w-3.5" strokeWidth={2} />
-                    </a>
-                  ) : null}
-                  <button
-                    type="button"
-                    aria-label={`${item.title} 카카오맵에서 검색`}
-                    className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[#FEE500] text-neutral-900 transition hover:brightness-95"
-                    onClick={() => openKakaoMap(item.title)}
-                  >
-                    <MapPin className="h-3.5 w-3.5" strokeWidth={2.2} />
-                  </button>
-                  <button
-                    type="button"
-                    aria-label={`${item.title} 삭제`}
-                    className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-neutral-100 text-neutral-500 transition hover:bg-neutral-200 hover:text-neutral-700"
-                    onClick={() => void handleDeleteItem(item)}
-                  >
-                    <X className="h-3.5 w-3.5" strokeWidth={2} />
-                  </button>
-                  <p className="shrink-0 pt-0.5 text-xs text-neutral-400">{formatCreatedAt(item.created_at, nowTimestamp)}</p>
-                </div>
+                      <h3 className="text-[15px] font-medium leading-6 text-neutral-950">{item.title}</h3>
+                      {item.tags?.map((tag) => (
+                        <span
+                          key={tag}
+                          className="rounded-full bg-neutral-100 px-2 py-0.5 text-xs text-neutral-600"
+                        >
+                          {tag}
+                        </span>
+                      ))}
+                    </div>
+                    {item.link_url ? (
+                      <a
+                        href={item.link_url}
+                        target="_blank"
+                        rel="noreferrer"
+                        aria-label="링크 열기"
+                        className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-neutral-100 text-neutral-600 transition hover:bg-neutral-200"
+                      >
+                        <Link2 className="h-3.5 w-3.5" strokeWidth={2} />
+                      </a>
+                    ) : null}
+                    <button
+                      type="button"
+                      aria-label={`${item.title} 카카오맵에서 검색`}
+                      className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[#FEE500] text-neutral-900 transition hover:brightness-95"
+                      onClick={() => openKakaoMap(item.title)}
+                    >
+                      <MapPin className="h-3.5 w-3.5" strokeWidth={2.2} />
+                    </button>
+                    <button
+                      type="button"
+                      aria-label={`${item.title} 삭제`}
+                      className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-neutral-100 text-neutral-500 transition hover:bg-neutral-200 hover:text-neutral-700"
+                      onClick={() => void handleDeleteItem(item)}
+                    >
+                      <X className="h-3.5 w-3.5" strokeWidth={2} />
+                    </button>
+                    <p className="shrink-0 pt-0.5 text-xs text-neutral-400">{formatCreatedAt(item.created_at, nowTimestamp)}</p>
+                  </div>
+                )}
               </div>
             </article>
           ))}
@@ -621,22 +726,77 @@ export function SharedListPage({ listId }: { listId: string }) {
                 <div className="h-2 w-2 rounded-full bg-neutral-400" />
               </button>
               {editingItemId === item.id ? (
-                <input
-                  ref={editingInputRef}
-                  className="min-w-0 flex-1 rounded-md bg-neutral-50 px-2 py-0.5 text-[15px] leading-6 text-neutral-700 outline-none ring-1 ring-neutral-300 focus:ring-neutral-500"
-                  value={editingDraft}
-                  onChange={(event) => setEditingDraft(event.target.value)}
-                  onBlur={() => void commitEditing(item)}
-                  onKeyDown={(event) => {
-                    if (event.key === 'Enter') {
-                      event.preventDefault();
-                      void commitEditing(item);
-                    } else if (event.key === 'Escape') {
-                      event.preventDefault();
-                      cancelEditing();
+                <div className="motion-fade-up flex min-w-0 flex-1 flex-col gap-2">
+                  <input
+                    ref={editingInputRef}
+                    className="h-9 w-full rounded-lg bg-neutral-50 px-3 text-[15px] text-neutral-700 outline-none ring-1 ring-neutral-300 focus:ring-neutral-500"
+                    placeholder="항목"
+                    value={editingDraft.title}
+                    onChange={(event) =>
+                      setEditingDraft((current) => ({ ...current, title: event.target.value }))
                     }
-                  }}
-                />
+                    onKeyDown={(event) => {
+                      if (event.key === 'Enter') {
+                        event.preventDefault();
+                        void commitEditing(item);
+                      } else if (event.key === 'Escape') {
+                        event.preventDefault();
+                        cancelEditing();
+                      }
+                    }}
+                  />
+                  <input
+                    className="h-9 w-full rounded-lg bg-neutral-50 px-3 text-sm text-neutral-700 outline-none ring-1 ring-neutral-200 focus:ring-neutral-400 placeholder:text-neutral-400"
+                    placeholder="링크 주소 (https://...)"
+                    value={editingDraft.linkUrl}
+                    onChange={(event) =>
+                      setEditingDraft((current) => ({ ...current, linkUrl: event.target.value }))
+                    }
+                    onKeyDown={(event) => {
+                      if (event.key === 'Enter') {
+                        event.preventDefault();
+                        void commitEditing(item);
+                      } else if (event.key === 'Escape') {
+                        event.preventDefault();
+                        cancelEditing();
+                      }
+                    }}
+                  />
+                  <input
+                    className="h-9 w-full rounded-lg bg-neutral-50 px-3 text-sm text-neutral-700 outline-none ring-1 ring-neutral-200 focus:ring-neutral-400 placeholder:text-neutral-400"
+                    placeholder="태그를 쉼표로 나눠 적어보세요"
+                    value={editingDraft.tagsText}
+                    onChange={(event) =>
+                      setEditingDraft((current) => ({ ...current, tagsText: event.target.value }))
+                    }
+                    onKeyDown={(event) => {
+                      if (event.key === 'Enter') {
+                        event.preventDefault();
+                        void commitEditing(item);
+                      } else if (event.key === 'Escape') {
+                        event.preventDefault();
+                        cancelEditing();
+                      }
+                    }}
+                  />
+                  <div className="flex justify-end gap-2">
+                    <button
+                      type="button"
+                      className="rounded-full bg-neutral-100 px-3 py-1 text-xs text-neutral-600 transition hover:bg-neutral-200"
+                      onClick={cancelEditing}
+                    >
+                      취소
+                    </button>
+                    <button
+                      type="button"
+                      className="rounded-full bg-neutral-950 px-3 py-1 text-xs text-white transition hover:bg-neutral-800 disabled:bg-neutral-300"
+                      onClick={() => void commitEditing(item)}
+                      disabled={!editingDraft.title.trim()}
+                    >
+                      저장
+                    </button>
+                  </div>
+                </div>
               ) : (
                 <h3
                   className="min-w-0 flex-1 cursor-text select-none text-[15px] leading-6 text-neutral-400 line-through"
