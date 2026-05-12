@@ -22,37 +22,18 @@ export type SharedListRecord = {
 };
 
 export type ListMember = {
-  user_id: string;
   display_name: string;
 };
 
-export async function ensureSession() {
-  const { data } = await supabase.auth.getSession();
-  if (data.session) {
-    return data.session;
-  }
-
-  const { data: signInData, error } = await supabase.auth.signInAnonymously();
-  if (error || !signInData.session) {
-    throw new Error('anonymous-auth-failed');
-  }
-
-  return signInData.session;
-}
-
 export async function createSharedList(groupName: string, displayName: string) {
-  const session = await ensureSession();
   const listId = crypto.randomUUID();
   const inviteToken = crypto.randomUUID().replace(/-/g, '').slice(0, 16);
 
-  const { error: listError } = await supabase
-    .from('shared_lists')
-    .insert({
-      id: listId,
-      group_name: groupName,
-      invite_token: inviteToken,
-      created_by: session.user.id,
-    });
+  const { error: listError } = await supabase.from('shared_lists').insert({
+    id: listId,
+    group_name: groupName,
+    invite_token: inviteToken,
+  });
 
   if (listError) {
     throw new Error('create-list-failed');
@@ -60,7 +41,6 @@ export async function createSharedList(groupName: string, displayName: string) {
 
   const { error: memberError } = await supabase.from('list_members').insert({
     shared_list_id: listId,
-    user_id: session.user.id,
     display_name: displayName,
   });
 
@@ -76,8 +56,6 @@ export async function createSharedList(groupName: string, displayName: string) {
 }
 
 export async function loadSharedList(listId: string) {
-  await ensureSession();
-
   const [{ data: list, error: listError }, { data: items, error: itemsError }] = await Promise.all([
     supabase
       .from('shared_lists')
@@ -106,41 +84,7 @@ export async function loadSharedList(listId: string) {
   return { list: list as SharedListRecord, items: (items ?? []) as SharedListItem[] };
 }
 
-export async function joinSharedListByInvite(inviteToken: string, displayName: string) {
-  const session = await ensureSession();
-  const list = await loadSharedListByInviteToken(inviteToken);
-
-  const { data: existing, error: existingError } = await supabase
-    .from('list_members')
-    .select('shared_list_id, user_id')
-    .eq('shared_list_id', list.id)
-    .eq('user_id', session.user.id)
-    .maybeSingle();
-
-  if (existingError) {
-    throw new Error('join-list-failed');
-  }
-
-  if (existing) {
-    return list;
-  }
-
-  const { error: insertError } = await supabase.from('list_members').insert({
-    shared_list_id: list.id,
-    user_id: session.user.id,
-    display_name: displayName,
-  });
-
-  if (insertError) {
-    throw new Error('join-list-failed');
-  }
-
-  return list;
-}
-
 export async function loadSharedListByInviteToken(inviteToken: string) {
-  await ensureSession();
-
   const { data, error } = await supabase.rpc('find_list_by_invite_token', {
     p_token: inviteToken,
   });
@@ -157,9 +101,26 @@ export async function loadSharedListByInviteToken(inviteToken: string) {
   return record as SharedListRecord;
 }
 
-export async function addSharedListItem(listId: string, input: NewSharedListItemInput) {
-  await ensureSession();
+export async function registerMember(listId: string, displayName: string) {
+  const { error } = await supabase
+    .from('list_members')
+    .upsert(
+      { shared_list_id: listId, display_name: displayName },
+      { onConflict: 'shared_list_id,display_name', ignoreDuplicates: true },
+    );
 
+  if (error) {
+    throw new Error('register-member-failed');
+  }
+}
+
+export async function joinSharedListByInvite(inviteToken: string, displayName: string) {
+  const list = await loadSharedListByInviteToken(inviteToken);
+  await registerMember(list.id, displayName);
+  return list;
+}
+
+export async function addSharedListItem(listId: string, input: NewSharedListItemInput) {
   const { data, error } = await supabase
     .from('bucket_list_items')
     .insert({
@@ -179,8 +140,6 @@ export async function addSharedListItem(listId: string, input: NewSharedListItem
 }
 
 export async function deleteSharedListItem(itemId: string) {
-  await ensureSession();
-
   const { error } = await supabase.from('bucket_list_items').delete().eq('id', itemId);
 
   if (error) {
@@ -189,8 +148,6 @@ export async function deleteSharedListItem(itemId: string) {
 }
 
 export async function restoreSharedListItem(listId: string, item: SharedListItem) {
-  await ensureSession();
-
   const { error } = await supabase.from('bucket_list_items').insert({
     id: item.id,
     shared_list_id: listId,
@@ -207,11 +164,9 @@ export async function restoreSharedListItem(listId: string, item: SharedListItem
 }
 
 export async function loadListMembers(listId: string) {
-  await ensureSession();
-
   const { data, error } = await supabase
     .from('list_members')
-    .select('user_id, display_name')
+    .select('display_name')
     .eq('shared_list_id', listId)
     .order('created_at', { ascending: true });
 
@@ -222,14 +177,7 @@ export async function loadListMembers(listId: string) {
   return (data ?? []) as ListMember[];
 }
 
-export async function getCurrentUserId() {
-  const session = await ensureSession();
-  return session.user.id;
-}
-
 export async function toggleSharedListItem(itemId: string, completed: boolean) {
-  await ensureSession();
-
   const { error } = await supabase
     .from('bucket_list_items')
     .update({ completed_at: completed ? new Date().toISOString() : null })

@@ -1,13 +1,14 @@
 'use client';
 
 import { ChevronDown, Link2, MapPin, Plus, Settings2, X } from 'lucide-react';
+import { useSearchParams } from 'next/navigation';
 import { FormEvent, useEffect, useMemo, useRef, useState } from 'react';
 import {
   addSharedListItem,
   deleteSharedListItem,
-  getCurrentUserId,
   loadListMembers,
   loadSharedList,
+  registerMember,
   restoreSharedListItem,
   toggleSharedListItem,
   type ListMember,
@@ -52,14 +53,33 @@ export function SharedListPage({ listId }: { listId: string }) {
   const [undoItem, setUndoItem] = useState<SharedListItem | null>(null);
   const [completedVisibleCount, setCompletedVisibleCount] = useState(5);
   const [members, setMembers] = useState<ListMember[]>([]);
-  const [currentUserId, setCurrentUserId] = useState('');
+  const [selectedTag, setSelectedTag] = useState<string | null>(null);
+  const searchParams = useSearchParams();
+  const myName = searchParams.get('as')?.trim() ?? '';
   const [nowTimestamp, setNowTimestamp] = useState(() => Date.now());
   const titleInputRef = useRef<HTMLInputElement>(null);
   const toastTimerRef = useRef<number | null>(null);
   const deleteRequestRef = useRef(new Map<string, Promise<void>>());
 
-  const pendingItems = useMemo(() => items.filter((item) => !item.completed_at), [items]);
-  const completedItems = useMemo(() => items.filter((item) => item.completed_at), [items]);
+  const pendingItemsAll = useMemo(() => items.filter((item) => !item.completed_at), [items]);
+  const completedItemsAll = useMemo(() => items.filter((item) => item.completed_at), [items]);
+  const availableTags = useMemo(() => {
+    const tagSet = new Set<string>();
+    for (const item of items) {
+      item.tags?.forEach((tag) => tagSet.add(tag));
+    }
+    return Array.from(tagSet);
+  }, [items]);
+  const effectiveSelectedTag =
+    selectedTag && availableTags.includes(selectedTag) ? selectedTag : null;
+  const pendingItems = useMemo(() => {
+    if (!effectiveSelectedTag) return pendingItemsAll;
+    return pendingItemsAll.filter((item) => item.tags?.includes(effectiveSelectedTag));
+  }, [pendingItemsAll, effectiveSelectedTag]);
+  const completedItems = useMemo(() => {
+    if (!effectiveSelectedTag) return completedItemsAll;
+    return completedItemsAll.filter((item) => item.tags?.includes(effectiveSelectedTag));
+  }, [completedItemsAll, effectiveSelectedTag]);
 
   function showToast(message: string, durationMs = 2200) {
     setToastMessage(message);
@@ -82,13 +102,15 @@ export function SharedListPage({ listId }: { listId: string }) {
   }
 
   async function copyCurrentLink() {
-    const href = window.location.href;
+    const url = new URL(window.location.href);
+    url.searchParams.delete('as');
+    const href = url.toString();
     try {
       await navigator.clipboard.writeText(href);
     } catch {
       // clipboard may be unavailable in some environments
     }
-    localStorage.setItem('lastCopiedCurrentPath', new URL(href).pathname);
+    localStorage.setItem('lastCopiedCurrentPath', url.pathname);
     showToast('링크를 복사했어요');
     setShareOpen(false);
   }
@@ -139,20 +161,32 @@ export function SharedListPage({ listId }: { listId: string }) {
       setItems(data.items);
     });
 
-    Promise.all([loadListMembers(listId), getCurrentUserId()])
-      .then(([nextMembers, uid]) => {
-        if (cancelled) return;
-        setMembers(nextMembers);
-        setCurrentUserId(uid);
-      })
-      .catch(() => {
-        // members header is non-critical
-      });
-
     return () => {
       cancelled = true;
     };
   }, [listId]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadAndRegister() {
+      try {
+        if (myName) {
+          await registerMember(listId, myName);
+        }
+        const nextMembers = await loadListMembers(listId);
+        if (cancelled) return;
+        setMembers(nextMembers);
+      } catch {
+        // members header is non-critical
+      }
+    }
+    void loadAndRegister();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [listId, myName]);
 
   async function handleAddItem(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -257,9 +291,9 @@ export function SharedListPage({ listId }: { listId: string }) {
         ) : (
           <>
             {members.map((member, index) => {
-              const isMe = member.user_id === currentUserId;
+              const isMe = member.display_name === myName;
               return (
-                <span key={member.user_id}>
+                <span key={member.display_name}>
                   <span className={isMe ? 'font-medium text-neutral-700' : ''}>
                     {member.display_name}
                     {isMe ? ' (나)' : ''}
@@ -360,6 +394,36 @@ export function SharedListPage({ listId }: { listId: string }) {
           </div>
         ) : null}
       </form>
+
+      {availableTags.length > 0 ? (
+        <div className="mt-4 flex flex-wrap gap-1.5">
+          <button
+            type="button"
+            className={`rounded-full px-3 py-1 text-xs transition ${
+              effectiveSelectedTag === null
+                ? 'bg-neutral-950 text-white'
+                : 'bg-neutral-100 text-neutral-600 hover:bg-neutral-200'
+            }`}
+            onClick={() => setSelectedTag(null)}
+          >
+            전체
+          </button>
+          {availableTags.map((tag) => (
+            <button
+              key={tag}
+              type="button"
+              className={`rounded-full px-3 py-1 text-xs transition ${
+                effectiveSelectedTag === tag
+                  ? 'bg-neutral-950 text-white'
+                  : 'bg-neutral-100 text-neutral-600 hover:bg-neutral-200'
+              }`}
+              onClick={() => setSelectedTag((current) => (current === tag ? null : tag))}
+            >
+              {tag}
+            </button>
+          ))}
+        </div>
+      ) : null}
 
       <section className="mt-8">
         <h2 className="mb-2 text-sm text-neutral-500">해야 할 항목</h2>

@@ -19,8 +19,9 @@ export function LocalApp() {
     setError('');
 
     try {
-      const list = await createSharedList(groupName.trim(), displayName.trim());
-      router.push(`/list/${list.id}`);
+      const name = displayName.trim();
+      const list = await createSharedList(groupName.trim(), name);
+      router.push(`/list/${list.id}?as=${encodeURIComponent(name)}`);
     } catch {
       setError('리스트를 만들지 못했어요. 다시 시도해주세요.');
     } finally {

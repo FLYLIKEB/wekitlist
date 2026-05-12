@@ -47,7 +47,7 @@ export function InvitePage({ token }: { token: string }) {
 
     try {
       await joinSharedListByInvite(token, name);
-      router.replace(`/list/${listId}`);
+      router.replace(`/list/${listId}?as=${encodeURIComponent(name)}`);
     } catch (err: unknown) {
       const code = err instanceof Error ? err.message : String(err);
       setJoinError(`참여에 실패했어요 (${code})`);
