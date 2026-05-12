@@ -724,46 +724,48 @@ export function SharedListPage({ listId }: { listId: string }) {
       </form>
 
       {availableTags.length > 0 ? (
-        <div className="mt-4 flex flex-wrap gap-1.5">
-          <button
-            type="button"
-            className={`rounded-full px-3 py-1 text-xs transition ${
-              effectiveSelectedTag === null
-                ? 'bg-neutral-950 text-white'
-                : 'bg-neutral-100 text-neutral-600 hover:bg-neutral-200'
-            }`}
-            onClick={() => setSelectedTag(null)}
-          >
-            전체
-            <span
-              className={`ml-1 ${
-                effectiveSelectedTag === null ? 'text-neutral-300' : 'text-neutral-400'
+        <div className="-mx-6 mt-4 overflow-x-auto px-6 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+          <div className="flex w-max gap-1.5">
+            <button
+              type="button"
+              className={`shrink-0 rounded-full px-3 py-1 text-xs transition ${
+                effectiveSelectedTag === null
+                  ? 'bg-neutral-950 text-white'
+                  : 'bg-neutral-100 text-neutral-600 hover:bg-neutral-200'
               }`}
+              onClick={() => setSelectedTag(null)}
             >
-              {pendingItemsAll.length}
-            </span>
-          </button>
-          {availableTags.map((tag) => {
-            const count = pendingCountByTag.get(tag) ?? 0;
-            const active = effectiveSelectedTag === tag;
-            return (
-              <button
-                key={tag}
-                type="button"
-                className={`rounded-full px-3 py-1 text-xs transition ${
-                  active
-                    ? 'bg-neutral-950 text-white'
-                    : 'bg-neutral-100 text-neutral-600 hover:bg-neutral-200'
+              전체
+              <span
+                className={`ml-1 ${
+                  effectiveSelectedTag === null ? 'text-neutral-300' : 'text-neutral-400'
                 }`}
-                onClick={() => setSelectedTag((current) => (current === tag ? null : tag))}
               >
-                {tag}
-                <span className={`ml-1 ${active ? 'text-neutral-300' : 'text-neutral-400'}`}>
-                  {count}
-                </span>
-              </button>
-            );
-          })}
+                {pendingItemsAll.length}
+              </span>
+            </button>
+            {availableTags.map((tag) => {
+              const count = pendingCountByTag.get(tag) ?? 0;
+              const active = effectiveSelectedTag === tag;
+              return (
+                <button
+                  key={tag}
+                  type="button"
+                  className={`shrink-0 rounded-full px-3 py-1 text-xs transition ${
+                    active
+                      ? 'bg-neutral-950 text-white'
+                      : 'bg-neutral-100 text-neutral-600 hover:bg-neutral-200'
+                  }`}
+                  onClick={() => setSelectedTag((current) => (current === tag ? null : tag))}
+                >
+                  {tag}
+                  <span className={`ml-1 ${active ? 'text-neutral-300' : 'text-neutral-400'}`}>
+                    {count}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
         </div>
       ) : null}
 
