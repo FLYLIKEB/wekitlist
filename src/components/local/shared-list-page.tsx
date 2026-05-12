@@ -303,13 +303,19 @@ export function SharedListPage({ listId }: { listId: string }) {
       .filter(Boolean);
   }
 
+  function toggleTagInText(currentText: string, tag: string): string {
+    const tags = parseDraftTags(currentText);
+    const isSelected = tags.includes(tag);
+    const nextTags = isSelected ? tags.filter((existing) => existing !== tag) : [...tags, tag];
+    return nextTags.join(', ');
+  }
+
   function toggleDraftTag(tag: string) {
-    setEditingDraft((current) => {
-      const tags = parseDraftTags(current.tagsText);
-      const isSelected = tags.includes(tag);
-      const nextTags = isSelected ? tags.filter((existing) => existing !== tag) : [...tags, tag];
-      return { ...current, tagsText: nextTags.join(', ') };
-    });
+    setEditingDraft((current) => ({ ...current, tagsText: toggleTagInText(current.tagsText, tag) }));
+  }
+
+  function toggleNewItemTag(tag: string) {
+    setTagsText((current) => toggleTagInText(current, tag));
   }
 
   function clearLongPressTimer() {
@@ -551,6 +557,27 @@ export function SharedListPage({ listId }: { listId: string }) {
               value={tagsText}
               onChange={(event) => setTagsText(event.target.value)}
             />
+            {availableTags.length > 0 ? (
+              <div className="flex flex-wrap gap-1.5">
+                {availableTags.map((tag) => {
+                  const selected = parseDraftTags(tagsText).includes(tag);
+                  return (
+                    <button
+                      key={tag}
+                      type="button"
+                      className={`rounded-full px-3 py-1 text-xs transition ${
+                        selected
+                          ? 'bg-neutral-950 text-white'
+                          : 'bg-neutral-100 text-neutral-600 hover:bg-neutral-200'
+                      }`}
+                      onClick={() => toggleNewItemTag(tag)}
+                    >
+                      {tag}
+                    </button>
+                  );
+                })}
+              </div>
+            ) : null}
           </div>
         ) : null}
       </form>
