@@ -83,6 +83,34 @@ describe('SharedListPage', () => {
     expect(screen.getByRole('button', { name: '공유' })).toBeVisible();
   });
 
+  it('shows a google search link next to the kakao map button for each item', async () => {
+    sharedListMocks.loadSharedList.mockResolvedValue({
+      list: {
+        id: 'list-1',
+        group_name: '주말 버킷리스트',
+        invite_token: 'invite-1',
+      },
+      items: [
+        {
+          id: 'item-1',
+          title: '성수 맛집',
+          link_url: null,
+          tags: null,
+          created_at: '2026-05-12T00:00:00.000Z',
+          completed_at: null,
+        },
+      ],
+    });
+
+    render(<SharedListPage listId="list-1" />);
+
+    const googleLink = await screen.findByRole('link', { name: '성수 맛집 구글에서 검색' });
+
+    expect(googleLink).toHaveAttribute('href', 'https://www.google.com/search?q=%EC%84%B1%EC%88%98%20%EB%A7%9B%EC%A7%91');
+    expect(googleLink).toHaveAttribute('target', '_blank');
+    expect(screen.getByRole('button', { name: '성수 맛집 카카오맵에서 검색' })).toBeVisible();
+  });
+
   it('keeps focus and shows the new item immediately after Enter submit', async () => {
     const user = userEvent.setup();
     let resolveCreate: ((item: SharedListItem) => void) | undefined;

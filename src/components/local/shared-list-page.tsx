@@ -1,6 +1,6 @@
 'use client';
 
-import { Check, ChevronDown, House, Link2, MapPin, Plus, RefreshCw, Settings2, Share2, X } from 'lucide-react';
+import { Check, ChevronDown, House, Link2, MapPin, Plus, RefreshCw, Search, Settings2, Share2, X } from 'lucide-react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { FormEvent, PointerEvent as ReactPointerEvent, TouchEvent as ReactTouchEvent, useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -1135,6 +1135,15 @@ export function SharedListPage({ listId }: { listId: string }) {
                             <Link2 className="h-3.5 w-3.5" strokeWidth={2} />
                           </a>
                         ) : null}
+                        <a
+                          href={`https://www.google.com/search?q=${encodeURIComponent(item.title)}`}
+                          target="_blank"
+                          rel="noreferrer"
+                          aria-label={`${item.title} 구글에서 검색`}
+                          className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-neutral-100 text-neutral-600 transition hover:bg-neutral-200"
+                        >
+                          <Search className="h-3.5 w-3.5" strokeWidth={2.2} />
+                        </a>
                         <button
                           type="button"
                           aria-label={`${item.title} 카카오맵에서 검색`}
