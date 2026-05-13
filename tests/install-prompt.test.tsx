@@ -20,6 +20,13 @@ function setUserAgent(ua: string) {
   });
 }
 
+function setWebdriver(value: boolean) {
+  Object.defineProperty(window.navigator, 'webdriver', {
+    configurable: true,
+    get: () => value,
+  });
+}
+
 function fireBeforeInstallPrompt(outcome: 'accepted' | 'dismissed' = 'accepted') {
   const event = new Event('beforeinstallprompt') as BeforeInstallPromptEvent;
   event.prompt = vi.fn(() => Promise.resolve());
@@ -30,6 +37,7 @@ function fireBeforeInstallPrompt(outcome: 'accepted' | 'dismissed' = 'accepted')
 
 beforeEach(() => {
   setUserAgent(ANDROID_UA);
+  setWebdriver(false);
 });
 
 afterEach(() => {
@@ -50,9 +58,10 @@ describe('InstallPrompt (Android)', () => {
       fireBeforeInstallPrompt();
     });
 
-    const installButton = await screen.findByRole('button', { name: '앱으로 설치' });
+    await new Promise((resolve) => setTimeout(resolve, 700));
+
     await waitFor(() => {
-      expect(installButton).toBeVisible();
+      expect(screen.getByRole('button', { name: '앱으로 설치' })).toBeVisible();
     });
   });
 

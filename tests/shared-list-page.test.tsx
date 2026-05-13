@@ -246,7 +246,7 @@ describe('SharedListPage', () => {
     });
     expect(sharedListMocks.deleteSharedListItem).not.toHaveBeenCalled();
 
-    await user.click(screen.getByRole('button', { name: '한강 산책 삭제' }));
+    fireEvent.click(screen.getByRole('button', { name: '한강 산책 삭제' }));
 
     await waitFor(() => {
       expect(screen.queryByText('한강 산책')).not.toBeInTheDocument();
