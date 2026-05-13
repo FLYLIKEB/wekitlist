@@ -1,40 +1,36 @@
 'use client';
 
-import { FormEvent, useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { FormEvent, useEffect, useMemo, useState } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { createSharedList } from '@/lib/shared-list';
 
 export function LocalApp() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [groupName, setGroupName] = useState('');
   const [displayName, setDisplayName] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
-  const [{ entryContext, redirectTarget }] = useState(() => {
+  const { entryContext, redirectTarget } = useMemo(() => {
     if (typeof window === 'undefined') {
       return { entryContext: null, redirectTarget: null } as const;
     }
 
-    const searchParams = new URLSearchParams(window.location.search);
     const fromList = searchParams.get('from') === 'list';
-
-    if (searchParams.has('fresh')) {
-      try {
-        const stored = localStorage.getItem('lastVisitedListPath');
-        const lastVisitedListPath = stored && stored.startsWith('/list/') ? stored : null;
-        return { entryContext: fromList ? lastVisitedListPath : null, redirectTarget: null } as const;
-      } catch {
-        return { entryContext: null, redirectTarget: null } as const;
-      }
-    }
 
     try {
       const stored = localStorage.getItem('lastVisitedListPath');
-      return { entryContext: null, redirectTarget: stored && stored.startsWith('/list/') ? stored : null } as const;
+      const lastVisitedListPath = stored && stored.startsWith('/list/') ? stored : null;
+
+      if (searchParams.has('fresh')) {
+        return { entryContext: fromList ? lastVisitedListPath : null, redirectTarget: null } as const;
+      }
+
+      return { entryContext: null, redirectTarget: lastVisitedListPath } as const;
     } catch {
       return { entryContext: null, redirectTarget: null } as const;
     }
-  });
+  }, [searchParams]);
 
   useEffect(() => {
     if (redirectTarget) {

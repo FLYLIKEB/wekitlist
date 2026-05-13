@@ -40,7 +40,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body>
         <div className="min-h-screen">
           <Link
-            href="/"
+            href="/?fresh=1&from=list"
             aria-label="홈으로 이동"
             className="fixed left-3 top-3 z-30 flex h-9 w-9 items-center justify-center rounded-full bg-white/90 text-neutral-500 shadow-sm ring-1 ring-neutral-200/80 transition hover:text-neutral-900"
           >

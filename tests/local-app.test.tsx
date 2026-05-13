@@ -12,11 +12,16 @@ const sharedListMocks = vi.hoisted(() => ({
   createSharedList: vi.fn(),
 }));
 
+function createSearchParams() {
+  return new URLSearchParams(window.location.search);
+}
+
 vi.mock('next/navigation', () => ({
   useRouter: () => ({
     push: pushMock,
     replace: replaceMock,
   }),
+  useSearchParams: () => createSearchParams(),
 }));
 
 vi.mock('../src/lib/shared-list', () => ({
