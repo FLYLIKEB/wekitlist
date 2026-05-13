@@ -39,7 +39,16 @@ describe('LocalApp', () => {
     window.history.replaceState({}, '', '/');
   });
 
-  it('shows a back button on the fresh home screen when entered from a list', async () => {
+  it('shows the redesigned brand-forward home screen', () => {
+    render(<LocalApp />);
+
+    expect(screen.getAllByText('Wekitlist').at(0)).toBeVisible();
+    expect(screen.getByRole('heading', { name: '함께 쓰는 리스트, 더 간결하게' })).toBeVisible();
+    expect(screen.getByText('새로운 공유 리스트를 바로 만들고 함께 채워보세요.')).toBeVisible();
+    expect(screen.getByRole('button', { name: '새 리스트 만들기' })).toBeVisible();
+  });
+
+  it('keeps return navigation secondary on the fresh home screen when entered from a list', async () => {
     const user = userEvent.setup();
 
     window.localStorage.setItem('lastVisitedListPath', '/list/abc?as=민지');
@@ -47,9 +56,11 @@ describe('LocalApp', () => {
 
     render(<LocalApp />);
 
-    expect(screen.getByText('같이 쓰는 버킷리스트')).toBeVisible();
+    expect(screen.getByRole('heading', { name: '함께 쓰는 리스트, 더 간결하게' })).toBeVisible();
 
     const backButton = screen.getByRole('button', { name: '리스트로 돌아가기' });
+    expect(backButton).toHaveClass('text-neutral-500');
+
     await user.click(backButton);
 
     expect(replaceMock).toHaveBeenCalledWith('/list/abc?as=민지');
