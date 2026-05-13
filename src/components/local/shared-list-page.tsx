@@ -774,7 +774,7 @@ export function SharedListPage({ listId }: { listId: string }) {
         <h1 className="text-3xl font-semibold tracking-tight text-neutral-950">{groupName}</h1>
         <div className="relative flex items-center gap-1.5">
           <Link
-            href="/?fresh=1"
+            href="/?fresh=1&from=list"
             aria-label="홈으로"
             className="flex h-8 w-8 items-center justify-center rounded-full bg-neutral-100 text-neutral-700 transition hover:bg-neutral-200"
           >

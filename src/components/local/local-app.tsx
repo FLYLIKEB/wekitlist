@@ -10,25 +10,31 @@ export function LocalApp() {
   const [displayName, setDisplayName] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
-  const redirectTarget = useState(() => {
-    if (typeof window === 'undefined') return null;
+  const [{ entryContext, redirectTarget }] = useState(() => {
+    if (typeof window === 'undefined') {
+      return { entryContext: null, redirectTarget: null } as const;
+    }
 
-    if (new URLSearchParams(window.location.search).has('fresh')) {
+    const searchParams = new URLSearchParams(window.location.search);
+    const fromList = searchParams.get('from') === 'list';
+
+    if (searchParams.has('fresh')) {
       try {
-        localStorage.removeItem('lastVisitedListPath');
+        const stored = localStorage.getItem('lastVisitedListPath');
+        const lastVisitedListPath = stored && stored.startsWith('/list/') ? stored : null;
+        return { entryContext: fromList ? lastVisitedListPath : null, redirectTarget: null } as const;
       } catch {
-        // ignore
+        return { entryContext: null, redirectTarget: null } as const;
       }
-      return null;
     }
 
     try {
       const stored = localStorage.getItem('lastVisitedListPath');
-      return stored && stored.startsWith('/list/') ? stored : null;
+      return { entryContext: null, redirectTarget: stored && stored.startsWith('/list/') ? stored : null } as const;
     } catch {
-      return null;
+      return { entryContext: null, redirectTarget: null } as const;
     }
-  })[0];
+  });
 
   useEffect(() => {
     if (redirectTarget) {
@@ -64,7 +70,17 @@ export function LocalApp() {
 
   return (
     <main className="mx-auto flex min-h-screen w-full max-w-xl flex-col px-6 py-16">
-      <p className="text-sm text-neutral-500">Wekitlist</p>
+      {entryContext ? (
+        <button
+          type="button"
+          className="w-fit rounded-full bg-neutral-100 px-4 py-2 text-sm font-medium text-neutral-700 transition hover:bg-neutral-200"
+          onClick={() => router.replace(entryContext)}
+        >
+          리스트로 돌아가기
+        </button>
+      ) : (
+        <p className="text-sm text-neutral-500">Wekitlist</p>
+      )}
       <h1 className="mt-3 text-4xl font-semibold tracking-tight text-neutral-950">
         같이 쓰는 버킷리스트
       </h1>
