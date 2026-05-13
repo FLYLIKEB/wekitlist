@@ -1,5 +1,4 @@
 import type { Metadata, Viewport } from 'next';
-import { House } from 'lucide-react';
 import Link from 'next/link';
 import { InstallPrompt } from '@/components/local/install-prompt';
 import './globals.css';
@@ -39,13 +38,6 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="ko">
       <body>
         <div className="min-h-screen">
-          <Link
-            href="/?fresh=1&from=list"
-            aria-label="홈으로 이동"
-            className="fixed left-3 top-3 z-30 flex h-9 w-9 items-center justify-center rounded-full bg-white/90 text-neutral-500 shadow-sm ring-1 ring-neutral-200/80 transition hover:text-neutral-900"
-          >
-            <House className="h-4 w-4" strokeWidth={2} />
-          </Link>
           {children}
           <footer className="px-6 pb-[calc(env(safe-area-inset-bottom)+20px)] pt-12">
             <div className="mx-auto flex max-w-xl justify-center border-t border-neutral-200/80 pt-5">
