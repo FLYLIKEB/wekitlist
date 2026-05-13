@@ -1,6 +1,6 @@
 'use client';
 
-import { FormEvent, useEffect, useMemo, useState } from 'react';
+import { FormEvent, useEffect, useMemo, useSyncExternalStore, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { createSharedList } from '@/lib/shared-list';
 
@@ -11,8 +11,13 @@ export function LocalApp() {
   const [displayName, setDisplayName] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
+  const isHydrated = useSyncExternalStore(
+    () => () => {},
+    () => true,
+    () => false,
+  );
   const { entryContext, redirectTarget } = useMemo(() => {
-    if (typeof window === 'undefined') {
+    if (!isHydrated) {
       return { entryContext: null, redirectTarget: null } as const;
     }
 
@@ -30,7 +35,7 @@ export function LocalApp() {
     } catch {
       return { entryContext: null, redirectTarget: null } as const;
     }
-  }, [searchParams]);
+  }, [isHydrated, searchParams]);
 
   useEffect(() => {
     if (redirectTarget) {

@@ -58,7 +58,7 @@ describe('LocalApp', () => {
 
     expect(screen.getByRole('heading', { name: '함께 쓰는 리스트, 더 간결하게' })).toBeVisible();
 
-    const backButton = screen.getByRole('button', { name: '리스트로 돌아가기' });
+    const backButton = await screen.findByRole('button', { name: '리스트로 돌아가기' });
     expect(backButton).toHaveClass('text-neutral-500');
 
     await user.click(backButton);
